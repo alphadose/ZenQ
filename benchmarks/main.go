@@ -112,6 +112,9 @@ func zenqConsumer(inQ *zenq.ZenQ[Payload], done chan int) {
 	var i uint64
 	for ; i < currSize; i++ {
 		var rez Payload = inQ.Read()
+		if rez.first != pl.first || rez.second != pl.second || rez.third != pl.third || rez.fourth != pl.fourth || rez.fifth != pl.fifth || len(rez.sixth) != len(pl.sixth) || rez.sevent != pl.sevent {
+			panic("Loss of data integretiy")
+		}
 		noopPayload(rez)
 	}
 	done <- 0

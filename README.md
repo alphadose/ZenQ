@@ -52,6 +52,9 @@ func main() {
 ZenQ is even faster than golang native channels making it suitable for low-latency operations
 Benchmarking code available [here](https://github.com/alphadose/ZenQ/tree/main/benchmarks)
 
+Note that if you run the benchmarks with `--race` flag then ZenQ will perform slower because the `--race` flag slows
+down the atomic operations in golang. Under normal circumstances, ZenQ will outperform golang native channels.
+
 ```bash
 $ go run benchmarks/main.go
 

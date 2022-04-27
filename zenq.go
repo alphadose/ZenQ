@@ -24,6 +24,7 @@ const queueSize uint64 = 4096
 // Masking is faster than division, only works with numbers which are powers of 2
 const indexMask uint64 = queueSize - 1
 
+// ZenQ is the CPU cache optimized ringbuffer implementation
 type ZenQ[T any] struct {
 	// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
 	// This prevents false sharing and hence improves performance.
@@ -38,14 +39,16 @@ type ZenQ[T any] struct {
 	padding5           [8]uint64
 }
 
+// New returns a new queue given its payload type
 func New[T any]() *ZenQ[T] {
 	return &ZenQ[T]{lastCommittedIndex: 0, nextFreeIndex: 1, readerIndex: 1}
 }
 
+// Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
 	var myIndex = atomic.AddUint64(&self.nextFreeIndex, 1) - 1
 	//Wait for reader to catch up, so we don't clobber a slot which it is (or will be) reading
-	for myIndex > (self.readerIndex + queueSize - 2) {
+	for myIndex > (atomic.LoadUint64(&self.readerIndex) + queueSize - 2) {
 		runtime.Gosched()
 	}
 	//Write the item into it's slot
@@ -56,15 +59,18 @@ func (self *ZenQ[T]) Write(value T) {
 	}
 }
 
+// Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() T {
 	var myIndex = atomic.AddUint64(&self.readerIndex, 1) - 1
+	// var lastCommittedIndex = atomic.AddUint64(&self.lastCommittedIndex, 1) - 1
 	//If reader has out-run writer, wait for a value to be committed
-	for myIndex > self.lastCommittedIndex {
+	for myIndex > atomic.LoadUint64(&self.lastCommittedIndex) {
 		runtime.Gosched()
 	}
 	return self.contents[myIndex&indexMask]
 }
 
+// Dump dumps the current queue state
 func (self *ZenQ[T]) Dump() {
 	fmt.Printf("lastCommitted: %3d, nextFree: %3d, readerIndex: %3d, content:", self.lastCommittedIndex, self.nextFreeIndex, self.readerIndex)
 	for index, value := range self.contents {
