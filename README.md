@@ -50,7 +50,8 @@ func main() {
 ## Benchmarks
 
 ZenQ is even faster than golang native channels making it suitable for low-latency operations
-Benchmarking code available [here](https://github.com/alphadose/ZenQ/tree/main/benchmarks)
+
+Benchmarking code available [here](./benchmarks)
 
 ```bash
 $ go run benchmarks/main.go
