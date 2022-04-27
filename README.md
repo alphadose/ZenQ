@@ -41,7 +41,8 @@ func main() {
 	}
 
 	for i := 0; i < 100; i++ {
-		fmt.Printf("%+v\n", zq.Read())
+        var data payload = zq.Read()
+		fmt.Printf("%+v\n", data)
 	}
 }
 ```
@@ -49,6 +50,7 @@ func main() {
 ## Benchmarks
 
 ZenQ is even faster than golang native channels making it suitable for low-latency operations
+Benchmarking code available [here](https://github.com/alphadose/ZenQ/tree/main/benchmarks)
 
 ```bash
 $ go run benchmarks/main.go
