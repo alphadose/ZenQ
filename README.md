@@ -41,7 +41,7 @@ func main() {
 	}
 
 	for i := 0; i < 100; i++ {
-        var data payload = zq.Read()
+        	var data payload = zq.Read()
 		fmt.Printf("%+v\n", data)
 	}
 }
