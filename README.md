@@ -89,3 +89,19 @@ Native Channel Runner completed transfer in: 1m12.552570459s
 ZenQ Runner completed transfer in: 41.473401041s
 ====================================================================
 ```
+
+In terms of operational efficiency
+```bash
+$ go test -bench=. benchmarks/*.go 
+
+goos: darwin
+goarch: arm64
+BenchmarkNativeChanSize50-8       	  200988	      5187 ns/op
+BenchmarkZenQSize50-8             	  250717	      4810 ns/op
+BenchmarkNativeChanSize5000-8     	    2512	    472204 ns/op
+BenchmarkZenQSize5000-8           	    3117	    390480 ns/op
+BenchmarkNativeChanSize500000-8   	      20	  55142010 ns/op
+BenchmarkZenQSize500000-8         	      28	  42990274 ns/op
+PASS
+ok  	command-line-arguments	8.291s
+```

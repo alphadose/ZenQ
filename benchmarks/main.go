@@ -61,7 +61,6 @@ func chanForwarder(inChan chan Payload, outChan chan Payload, done chan int) {
 		var o Payload = <-inChan
 		outChan <- o
 	}
-	defer close(inChan)
 	done <- 0
 }
 
@@ -71,12 +70,13 @@ func chanConsumer(inChan chan Payload, done chan int) {
 		var o Payload = <-inChan
 		noopPayload(o)
 	}
-	defer close(inChan)
 	done <- 0
 }
 
 func chanRunner() {
 	doneChan := make(chan int)
+	r1 = make(chan Payload, channelBufferSize)
+	r2 = make(chan Payload, channelBufferSize)
 
 	var startTime time.Time = time.Now()
 
@@ -123,6 +123,8 @@ func zenqConsumer(inQ *zenq.ZenQ[Payload], done chan int) {
 func zenqRunner() {
 	doneChan := make(chan int)
 
+	g1 = zenq.New[Payload]()
+	g2 = zenq.New[Payload]()
 	var startTime time.Time = time.Now()
 
 	go zenqProducer(g1, doneChan)
@@ -141,13 +143,6 @@ func main() {
 		currSize = tput
 		fmt.Println("With Input Batch Size: ", currSize)
 		fmt.Print("\n")
-
-		// Re-initializing
-		r1 = make(chan Payload, channelBufferSize)
-		r2 = make(chan Payload, channelBufferSize)
-
-		g1 = zenq.New[Payload]()
-		g2 = zenq.New[Payload]()
 
 		// Run tests
 		chanRunner()

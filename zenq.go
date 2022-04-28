@@ -62,7 +62,6 @@ func (self *ZenQ[T]) Write(value T) {
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() T {
 	var myIndex = atomic.AddUint64(&self.readerIndex, 1) - 1
-	// var lastCommittedIndex = atomic.AddUint64(&self.lastCommittedIndex, 1) - 1
 	//If reader has out-run writer, wait for a value to be committed
 	for myIndex > atomic.LoadUint64(&self.lastCommittedIndex) {
 		runtime.Gosched()
