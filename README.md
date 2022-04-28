@@ -92,16 +92,16 @@ ZenQ Runner completed transfer in: 41.473401041s
 
 In terms of operational efficiency
 ```bash
-$ go test -bench=. benchmarks/*.go 
+$ go test -benchmem -bench . benchmarks/*.go
 
 goos: darwin
 goarch: arm64
-BenchmarkChanInputSize50-8       	  253020	      4780 ns/op
-BenchmarkZenQInputSize50-8       	  260434	      4583 ns/op
-BenchmarkChanInputSize5000-8     	    2818	    476364 ns/op
-BenchmarkZenQInputSize5000-8     	    3248	    370199 ns/op
-BenchmarkChanInputSize500000-8   	      22	  60106394 ns/op
-BenchmarkZenQInputSize500000-8   	      26	  40683229 ns/op
+BenchmarkChanInputSize50-8       	  251517	      4766 ns/op	      80 B/op	       3 allocs/op
+BenchmarkZenQInputSize50-8       	  260270	      4581 ns/op	      80 B/op	       3 allocs/op
+BenchmarkChanInputSize5000-8     	    3072	    511490 ns/op	      80 B/op	       3 allocs/op
+BenchmarkZenQInputSize5000-8     	    3223	    369790 ns/op	      80 B/op	       3 allocs/op
+BenchmarkChanInputSize500000-8   	      21	  59785744 ns/op	      80 B/op	       3 allocs/op
+BenchmarkZenQInputSize500000-8   	      28	  40053103 ns/op	      80 B/op	       3 allocs/op
 PASS
-ok  	command-line-arguments	8.847s
+ok  	command-line-arguments	8.879s
 ```
