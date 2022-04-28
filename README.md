@@ -96,12 +96,12 @@ $ go test -bench=. benchmarks/*.go
 
 goos: darwin
 goarch: arm64
-BenchmarkChanInputSize50-8       	  212878	      5566 ns/op
-BenchmarkZenQInputSize50-8       	  250508	      4805 ns/op
-BenchmarkChanInputSize5000-8     	    2396	    937303 ns/op
-BenchmarkZenQInputSize5000-8     	    3074	    384330 ns/op
-BenchmarkChanInputSize500000-8   	      19	  57268362 ns/op
-BenchmarkZenQInputSize500000-8   	      27	  41297407 ns/op
+BenchmarkChanInputSize50-8       	  253020	      4780 ns/op
+BenchmarkZenQInputSize50-8       	  260434	      4583 ns/op
+BenchmarkChanInputSize5000-8     	    2818	    476364 ns/op
+BenchmarkZenQInputSize5000-8     	    3248	    370199 ns/op
+BenchmarkChanInputSize500000-8   	      22	  60106394 ns/op
+BenchmarkZenQInputSize500000-8   	      26	  40683229 ns/op
 PASS
-ok  	command-line-arguments	9.372s
+ok  	command-line-arguments	8.847s
 ```

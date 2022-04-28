@@ -9,13 +9,13 @@ import (
 
 // Example item which we will be writing to and reading from the queue
 type Payload struct {
-	first  byte
-	second int64
-	third  float64
-	fourth string
-	fifth  complex64
-	sixth  []rune
-	sevent bool
+	first   byte
+	second  int64
+	third   float64
+	fourth  string
+	fifth   complex64
+	sixth   []rune
+	seventh bool
 }
 
 func NewPayload(value uint64) *Payload {
@@ -58,8 +58,7 @@ func chanProducer(outChan chan Payload, done chan int) {
 func chanForwarder(inChan chan Payload, outChan chan Payload, done chan int) {
 	var i uint64
 	for ; i < currSize; i++ {
-		var o Payload = <-inChan
-		outChan <- o
+		outChan <- <-inChan
 	}
 	done <- 0
 }
@@ -67,8 +66,7 @@ func chanForwarder(inChan chan Payload, outChan chan Payload, done chan int) {
 func chanConsumer(inChan chan Payload, done chan int) {
 	var i uint64
 	for ; i < currSize; i++ {
-		var o Payload = <-inChan
-		noopPayload(o)
+		noopPayload(<-inChan)
 	}
 	done <- 0
 }
@@ -102,8 +100,7 @@ func zenqProducer(outQ *zenq.ZenQ[Payload], done chan int) {
 func zenqForwarder(inQ *zenq.ZenQ[Payload], outQ *zenq.ZenQ[Payload], done chan int) {
 	var i uint64
 	for ; i < currSize; i++ {
-		var rez Payload = inQ.Read()
-		outQ.Write(rez)
+		outQ.Write(inQ.Read())
 	}
 	done <- 0
 }
@@ -111,11 +108,12 @@ func zenqForwarder(inQ *zenq.ZenQ[Payload], outQ *zenq.ZenQ[Payload], done chan 
 func zenqConsumer(inQ *zenq.ZenQ[Payload], done chan int) {
 	var i uint64
 	for ; i < currSize; i++ {
-		var rez Payload = inQ.Read()
-		if rez.first != pl.first || rez.second != pl.second || rez.third != pl.third || rez.fourth != pl.fourth || rez.fifth != pl.fifth || len(rez.sixth) != len(pl.sixth) || rez.sevent != pl.sevent {
-			panic("Loss of data integretiy")
-		}
-		noopPayload(rez)
+		// var rez Payload = inQ.Read()
+		// // if rez.first != pl.first || rez.second != pl.second || rez.third != pl.third || rez.fourth != pl.fourth || rez.fifth != pl.fifth || len(rez.sixth) != len(pl.sixth) || rez.sevent != pl.sevent {
+		// // 	panic("Loss of data integretiy")
+		// // }
+		// noopPayload(rez)
+		noopPayload(inQ.Read())
 	}
 	done <- 0
 }
