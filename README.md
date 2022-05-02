@@ -7,7 +7,7 @@
 You need Golang [1.18.x](https://go.dev/dl/) or above since this package uses generics
 
 ```bash
-$ go get github.com/alphadose/zenq@1.1.0
+$ go get github.com/alphadose/zenq@1.2.0
 ```
 
 ## Usage

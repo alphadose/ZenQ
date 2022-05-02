@@ -26,59 +26,68 @@ const (
 	indexMask uint64 = queueSize - 1
 )
 
-// Most modern CPUs have cache line size of 64 bytes
-type cacheLinePadding [8]uint64
+// ZenQ Slot state enums
+const (
+	SlotEmpty = iota
+	SlotBusy
+	SlotCommitted
+)
 
-// ZenQ is the CPU cache optimized ringbuffer implementation
-type ZenQ[T any] struct {
-	// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
-	// This prevents false sharing and hence improves performance.
-	_p1                cacheLinePadding
-	lastCommittedIndex uint64
-	_p2                cacheLinePadding
-	nextFreeIndex      uint64
-	_p3                cacheLinePadding
-	readerIndex        uint64
-	_p4                cacheLinePadding
-	// arrays have faster access speed than slices for single elements
-	contents [queueSize]T
-	_p5      cacheLinePadding
-}
+type (
+	// Most modern CPUs have cache line size of 64 bytes
+	cacheLinePadding [8]uint64
 
-// New returns a new queue given its payload type
+	// Slot represents a single slot in ZenQ each one having its own state
+	Slot[T any] struct {
+		State uint32
+		Item  T
+	}
+
+	// ZenQ is the CPU cache optimized ringbuffer implementation
+	ZenQ[T any] struct {
+		// The padding members 1 to 4 below are here to ensure each item is on a separate cache line.
+		// This prevents false sharing and hence improves performance.
+		_p1         cacheLinePadding
+		writerIndex uint64
+		_p2         cacheLinePadding
+		readerIndex uint64
+		_p3         cacheLinePadding
+		// arrays have faster access speed than slices for single elements
+		contents [queueSize]Slot[T]
+		_p4      cacheLinePadding
+	}
+)
+
+// New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
-	return &ZenQ[T]{lastCommittedIndex: 0, nextFreeIndex: 1, readerIndex: 1}
+	return new(ZenQ[T])
 }
 
 // Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
-	myIndex := atomic.AddUint64(&self.nextFreeIndex, 1) - 1
-	//Wait for reader to catch up, so we don't clobber a slot which it is (or will be) reading
-	for myIndex > atomic.LoadUint64(&self.readerIndex)+queueSize-2 {
+	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
+	slotState := &self.contents[idx].State
+	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		runtime.Gosched()
 	}
-	//Write the item into it's slot
-	self.contents[myIndex&indexMask] = value
-
-	//Increment the lastCommittedIndex so the item is available for reading
-	for !atomic.CompareAndSwapUint64(&self.lastCommittedIndex, myIndex-1, myIndex) {
-		runtime.Gosched()
-	}
+	self.contents[idx].Item = value
+	atomic.StoreUint32(slotState, SlotCommitted)
 }
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() T {
-	myIndex := atomic.AddUint64(&self.readerIndex, 1) - 1
-	//If reader has out-run writer, wait for a value to be committed
-	for myIndex > atomic.LoadUint64(&self.lastCommittedIndex) {
+	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
+	slotState := &self.contents[idx].State
+	defer atomic.StoreUint32(slotState, SlotEmpty)
+	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		runtime.Gosched()
 	}
-	return self.contents[myIndex&indexMask]
+	return self.contents[idx].Item
 }
 
 // Dump dumps the current queue state
 func (self *ZenQ[T]) Dump() {
-	fmt.Printf("lastCommitted: %3d, nextFree: %3d, readerIndex: %3d, content:", self.lastCommittedIndex, self.nextFreeIndex, self.readerIndex)
+	fmt.Printf("nextFree: %3d, readerIndex: %3d, content:", self.writerIndex, self.readerIndex)
 	for index, value := range self.contents {
 		fmt.Printf("%5v : %5v", index, value)
 	}
@@ -87,7 +96,9 @@ func (self *ZenQ[T]) Dump() {
 
 // Reset resets the queue state
 func (self *ZenQ[T]) Reset() {
-	atomic.StoreUint64(&self.lastCommittedIndex, 0)
-	atomic.StoreUint64(&self.nextFreeIndex, 1)
-	atomic.StoreUint64(&self.readerIndex, 1)
+	atomic.StoreUint64(&self.writerIndex, 0)
+	atomic.StoreUint64(&self.readerIndex, 0)
+	for _, s := range self.contents {
+		atomic.StoreUint32(&s.State, SlotEmpty)
+	}
 }
