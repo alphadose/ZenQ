@@ -112,12 +112,11 @@ func cleanup() {
 }
 
 func main() {
+	cleanup()
 	for _, tput := range throughput {
 		currSize = tput
 		fmt.Printf("With Input Batch Size: %d and Num Concurrent Writers: %d\n", currSize, numConcurrentWriters)
 		fmt.Print("\n")
-
-		cleanup()
 
 		// Run tests
 		measureTime(chanRunner, "Native Channel")
