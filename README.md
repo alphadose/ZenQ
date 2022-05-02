@@ -72,16 +72,16 @@ $ go test -bench=. -benchmem benchmarks/*.go
 
 goos: darwin
 goarch: arm64
-Benchmark_Chan_NumWriters1_InputSize600-8          	   48772	     23614 ns/op	       0 B/op	       0 allocs/op
-Benchmark_ZenQ_NumWriters1_InputSize600-8          	   73860	     15984 ns/op	       0 B/op	       0 allocs/op
-Benchmark_Chan_NumWriters3_InputSize60000-8        	     216	   5500119 ns/op	     109 B/op	       0 allocs/op
-Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     411	   2835585 ns/op	       0 B/op	       0 allocs/op
-Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 703887875 ns/op	    1600 B/op	       5 allocs/op
-Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       3	 445850153 ns/op	       0 B/op	       0 allocs/op
-Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1593555542 ns/op	   39456 B/op	     146 allocs/op
-Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       3	 485728444 ns/op	    3466 B/op	       8 allocs/op
-Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1984590667 ns/op	  497344 B/op	    1817 allocs/op
-Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       2	 777197480 ns/op	    8736 B/op	      21 allocs/op
+Benchmark_Chan_NumWriters1_InputSize600-8         48772 	     23614 ns/op       0 B/op      0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8         73860 	     15984 ns/op       0 B/op      0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8         216 	   5500119 ns/op     109 B/op      0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8         411 	   2835585 ns/op       0 B/op      0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8         2 	 703887875 ns/op    1600 B/op      5 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8         3 	 445850153 ns/op       0 B/op      0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8       1 	1593555542 ns/op   39456 B/op    146 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8       3 	 485728444 ns/op    3466 B/op      8 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8      1 	1984590667 ns/op  497344 B/op   1817 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8      2 	 777197480 ns/op    8736 B/op     21 allocs/op
 PASS
 ok  	command-line-arguments	19.687s
 ```
