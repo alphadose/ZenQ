@@ -4,8 +4,9 @@ import (
 	"testing"
 )
 
-func zenqTestRunner(size uint64, b *testing.B) {
+func zenqTestRunner(numWriters uint64, size uint64, b *testing.B) {
 	currSize = size
+	numConcurrentWriters = numWriters
 
 	cleanup()
 	b.ResetTimer()
@@ -17,8 +18,9 @@ func zenqTestRunner(size uint64, b *testing.B) {
 	}
 }
 
-func chanTestRunner(size uint64, b *testing.B) {
+func chanTestRunner(numWriters uint64, size uint64, b *testing.B) {
 	currSize = size
+	numConcurrentWriters = numWriters
 
 	cleanup()
 	b.ResetTimer()
@@ -30,14 +32,22 @@ func chanTestRunner(size uint64, b *testing.B) {
 	}
 }
 
-func BenchmarkChanInputSize600(b *testing.B) { chanTestRunner(600, b) }
+func Benchmark_Chan_NumWriters1_InputSize600(b *testing.B) { chanTestRunner(1, 600, b) }
 
-func BenchmarkZenQInputSize600(b *testing.B) { zenqTestRunner(600, b) }
+func Benchmark_ZenQ_NumWriters1_InputSize600(b *testing.B) { zenqTestRunner(1, 600, b) }
 
-func BenchmarkChanInputSize60000(b *testing.B) { chanTestRunner(60000, b) }
+func Benchmark_Chan_NumWriters3_InputSize60000(b *testing.B) { chanTestRunner(3, 60000, b) }
 
-func BenchmarkZenQInputSize60000(b *testing.B) { zenqTestRunner(60000, b) }
+func Benchmark_ZenQ_NumWriters3_InputSize60000(b *testing.B) { zenqTestRunner(3, 60000, b) }
 
-func BenchmarkChanInputSize6000000(b *testing.B) { chanTestRunner(6000000, b) }
+func Benchmark_Chan_NumWriters8_InputSize6000000(b *testing.B) { chanTestRunner(8, 6000000, b) }
 
-func BenchmarkZenQInputSize6000000(b *testing.B) { zenqTestRunner(6000000, b) }
+func Benchmark_ZenQ_NumWriters8_InputSize6000000(b *testing.B) { zenqTestRunner(8, 6000000, b) }
+
+func Benchmark_Chan_NumWriters100_InputSize6000000(b *testing.B) { chanTestRunner(100, 6000000, b) }
+
+func Benchmark_ZenQ_NumWriters100_InputSize6000000(b *testing.B) { zenqTestRunner(100, 6000000, b) }
+
+func Benchmark_Chan_NumWriters1000_InputSize7000000(b *testing.B) { chanTestRunner(1000, 7000000, b) }
+
+func Benchmark_ZenQ_NumWriters1000_InputSize7000000(b *testing.B) { zenqTestRunner(1000, 7000000, b) }

@@ -103,6 +103,7 @@ func measureTime(callback func(), runnerName string) {
 	fmt.Printf("%s Runner completed transfer in: %v\n", runnerName, time.Since(startTime))
 }
 
+// drain the channel and zenQ
 func cleanup() {
 	for len(ch) > 0 {
 		<-ch

@@ -65,20 +65,26 @@ func New[T any]() *ZenQ[T] {
 
 // Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
+	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
+	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		runtime.Gosched()
 	}
 	self.contents[idx].Item = value
+	// commit write into the slot
 	atomic.StoreUint32(slotState, SlotCommitted)
 }
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() T {
+	// Get reader slot index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
+	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	defer atomic.StoreUint32(slotState, SlotEmpty)
+	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		runtime.Gosched()
 	}
@@ -86,6 +92,7 @@ func (self *ZenQ[T]) Read() T {
 }
 
 // Dump dumps the current queue state
+// Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Dump() {
 	fmt.Printf("nextFree: %3d, readerIndex: %3d, content:", self.writerIndex, self.readerIndex)
 	for index, value := range self.contents {
@@ -95,6 +102,7 @@ func (self *ZenQ[T]) Dump() {
 }
 
 // Reset resets the queue state
+// Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Reset() {
 	atomic.StoreUint64(&self.writerIndex, 0)
 	atomic.StoreUint64(&self.readerIndex, 0)
