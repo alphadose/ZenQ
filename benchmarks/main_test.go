@@ -2,54 +2,42 @@ package main
 
 import (
 	"testing"
-
-	"github.com/alphadose/zenq"
 )
 
 func zenqTestRunner(size uint64, b *testing.B) {
-	doneChan := make(chan int)
 	currSize = size
-	g1 = zenq.New[Payload]()
-	g2 = zenq.New[Payload]()
 
+	cleanup()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		go zenqProducer(g1, doneChan)
-		go zenqForwarder(g1, g2, doneChan)
-		go zenqConsumer(g2, doneChan)
-
-		<-doneChan
-		<-doneChan
-		<-doneChan
+		for i := uint64(0); i < numConcurrentWriters; i++ {
+			go zenqProducer()
+		}
+		zenqConsumer()
 	}
 }
 
 func chanTestRunner(size uint64, b *testing.B) {
-	doneChan := make(chan int)
 	currSize = size
-	r1 = make(chan Payload, channelBufferSize)
-	r2 = make(chan Payload, channelBufferSize)
 
+	cleanup()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		go chanProducer(r1, doneChan)
-		go chanForwarder(r1, r2, doneChan)
-		go chanConsumer(r2, doneChan)
-
-		<-doneChan
-		<-doneChan
-		<-doneChan
+		for i := uint64(0); i < numConcurrentWriters; i++ {
+			go chanProducer()
+		}
+		chanConsumer()
 	}
 }
 
-func BenchmarkChanInputSize50(b *testing.B) { chanTestRunner(50, b) }
+func BenchmarkChanInputSize600(b *testing.B) { chanTestRunner(600, b) }
 
-func BenchmarkZenQInputSize50(b *testing.B) { zenqTestRunner(50, b) }
+func BenchmarkZenQInputSize600(b *testing.B) { zenqTestRunner(600, b) }
 
-func BenchmarkChanInputSize5000(b *testing.B) { chanTestRunner(5000, b) }
+func BenchmarkChanInputSize60000(b *testing.B) { chanTestRunner(60000, b) }
 
-func BenchmarkZenQInputSize5000(b *testing.B) { zenqTestRunner(5000, b) }
+func BenchmarkZenQInputSize60000(b *testing.B) { zenqTestRunner(60000, b) }
 
-func BenchmarkChanInputSize500000(b *testing.B) { chanTestRunner(500000, b) }
+func BenchmarkChanInputSize6000000(b *testing.B) { chanTestRunner(6000000, b) }
 
-func BenchmarkZenQInputSize500000(b *testing.B) { zenqTestRunner(500000, b) }
+func BenchmarkZenQInputSize6000000(b *testing.B) { zenqTestRunner(6000000, b) }
