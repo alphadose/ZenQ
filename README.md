@@ -86,7 +86,7 @@ PASS
 ok  	command-line-arguments	19.687s
 ```
 
-The above results show that ZenQ is more efficient than channels in all 3 metrics i.e `ns/op`, `B/op` and `allocs/op` for the following cases:-
+The above results show that ZenQ is more efficient than channels in all 3 metrics i.e `ns/op`, `B/op` and `allocs/op` for the following tested cases:-
 
 1. SPSC
 2. MPSC with NUM_WRITER_GOROUTINES < NUM_CPU_CORES

@@ -1,4 +1,5 @@
-// A minimalist thread-safe queue implemented using a lock-free ringbuffer which is even faster than golang's native channels
+// A minimalist thread-safe queue implemented using a lock-free ringbuffer which is even faster
+// and more resource than golang's native channels
 
 // Known Limitations:-
 //
@@ -8,6 +9,7 @@
 // Suggestions:-
 //
 // 1. If you have enough cores you can change from runtime.Gosched() to a busy loop
+// 2. Use runtime.LockOSThread() on the goroutine calling ZenQ.Read() for best performance provided you have > 1 cpu cores
 //
 
 package zenq
