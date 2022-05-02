@@ -11,10 +11,7 @@ func zenqTestRunner(numWriters uint64, size uint64, b *testing.B) {
 	cleanup()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		for i := uint64(0); i < numConcurrentWriters; i++ {
-			go zenqProducer()
-		}
-		zenqConsumer()
+		zenqRunner()
 	}
 }
 
@@ -25,10 +22,7 @@ func chanTestRunner(numWriters uint64, size uint64, b *testing.B) {
 	cleanup()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		for i := uint64(0); i < numConcurrentWriters; i++ {
-			go chanProducer()
-		}
-		chanConsumer()
+		chanRunner()
 	}
 }
 
