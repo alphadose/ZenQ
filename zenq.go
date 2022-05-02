@@ -85,8 +85,9 @@ func (self *ZenQ[T]) Read() T {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
+	// Note:- Although defer adds around 200ns of latency, this is required for preventing race conditions
 	defer atomic.StoreUint32(slotState, SlotEmpty)
-	// CAS -> change slot_state to busy if slot_state == empty
+	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		runtime.Gosched()
 	}
