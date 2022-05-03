@@ -30,7 +30,7 @@ func NewPayload() *Payload {
 }
 
 const (
-	channelBufferSize = 1 << 12
+	channelBufferSize = 1 << 16
 )
 
 var (
@@ -40,6 +40,7 @@ var (
 
 	// input batch size
 	throughput = []uint64{60, 600, 6000, 6000000, 600000000}
+	// throughput = []uint64{5}
 
 	// Number of writers/producers which will be writing to the queue concurrently
 	numConcurrentWriters uint64 = 1

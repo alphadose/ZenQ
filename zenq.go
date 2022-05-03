@@ -17,12 +17,13 @@ package zenq
 import (
 	"fmt"
 	"runtime"
+	"sync"
 	"sync/atomic"
 )
 
 const (
 	// The queue size, should be a power of 2
-	queueSize uint64 = 1 << 12
+	queueSize uint64 = 1 << 16
 
 	// Masking is faster than division, only works with numbers which are powers of 2
 	indexMask uint64 = queueSize - 1
@@ -41,8 +42,9 @@ type (
 
 	// Slot represents a single slot in ZenQ each one having its own state
 	Slot[T any] struct {
-		State uint32
-		Item  T
+		State   uint32
+		Sleeper sync.Mutex
+		Item    T
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -65,18 +67,38 @@ func New[T any]() *ZenQ[T] {
 	return new(ZenQ[T])
 }
 
+// commit write into a slot
+func (self *ZenQ[T]) commit(index uint64, slotState *uint32, value T) {
+	self.contents[index].Item = value
+	// commit write into the slot
+	atomic.StoreUint32(slotState, SlotCommitted)
+}
+
 // Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
 	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	// CAS -> change slot_state to busy if slot_state == empty
-	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		runtime.Gosched()
+	if atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+		self.commit(idx, slotState, value)
+	} else {
+		// case where large number of writer goroutines are contending for the same slot
+		// hence making them sleep via mutex.Lock() is more efficient resource wise
+		sleeper := &self.contents[idx].Sleeper
+		sleeper.Lock()
+		// this ensures only 1 goroutine is contending for a particular slot
+		// at all times and other goroutines(if any) are sleeping
+		for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+			runtime.Gosched()
+			// need access to goready() function from runtime internals to pre-empt this goroutine after parking
+			// unfortunatly the struct `g` to be used in goready() cannot be replicated in this plane
+			// goparkunlock(sleeper, "test-parking", traceEvGoBlockSend, 2)
+		}
+		self.commit(idx, slotState, value)
+		// unlock(sleeper)
+		sleeper.Unlock()
 	}
-	self.contents[idx].Item = value
-	// commit write into the slot
-	atomic.StoreUint32(slotState, SlotCommitted)
 }
 
 // Read reads a value from the queue, you can once read once per object
@@ -97,9 +119,9 @@ func (self *ZenQ[T]) Read() T {
 // Dump dumps the current queue state
 // Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Dump() {
-	fmt.Printf("nextFree: %3d, readerIndex: %3d, content:", self.writerIndex, self.readerIndex)
-	for index, value := range self.contents {
-		fmt.Printf("%5v : %5v", index, value)
+	fmt.Printf("writerIndex: %3d, readerIndex: %3d, content:", self.writerIndex, self.readerIndex)
+	for index := range self.contents {
+		fmt.Printf("%5v : State -> %5v, Item -> %5v", index, self.contents[index].State, self.contents[index].Item)
 	}
 	fmt.Print("\n")
 }
@@ -109,7 +131,7 @@ func (self *ZenQ[T]) Dump() {
 func (self *ZenQ[T]) Reset() {
 	atomic.StoreUint64(&self.writerIndex, 0)
 	atomic.StoreUint64(&self.readerIndex, 0)
-	for _, s := range self.contents {
-		atomic.StoreUint32(&s.State, SlotEmpty)
+	for idx := range self.contents {
+		atomic.StoreUint32(&self.contents[idx].State, SlotEmpty)
 	}
 }
