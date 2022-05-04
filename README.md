@@ -4,8 +4,8 @@
 
 ## Features
 
-* Much faster than native channels in both SPSC (single-producer-single-consumer) and MPSC (multi-producer-single-consumer) modes in terms of `ns/op`
-* More resource efficient in terms of `B/op` and `allocs/op` evident while benchmarking large batch size inputs
+* Much faster than native channels in both SPSC (single-producer-single-consumer) and MPSC (multi-producer-single-consumer) modes in terms of `time/op`
+* More resource efficient in terms of `memory_allocation/op` and `num_allocations/op` evident while benchmarking large batch size inputs
 * Handles the case where NUM_WRITER_GOROUTINES > NUM_CPU_CORES much better than native channels
 
 Benchmarks to support the above claims [here](#benchmarks)
@@ -15,7 +15,7 @@ Benchmarks to support the above claims [here](#benchmarks)
 You need Golang [1.18.x](https://go.dev/dl/) or above since this package uses generics
 
 ```bash
-$ go get github.com/alphadose/zenq@1.2.0
+$ go get github.com/alphadose/zenq@1.3.0
 ```
 
 ## Usage
@@ -92,7 +92,7 @@ down the atomic operations in golang. Under normal circumstances, ZenQ will outp
 * INPUT_SIZE -> The number of input payloads to be passed through ZenQ/Channel from producers to consumer
 
 ```bash
-Computed from benchstat of 20 benchmarks each via go test -benchmem -bench=. benchmarks/*.go
+Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/*.go
 
 name                                     time/op
 _Chan_NumWriters1_InputSize600-8         24.6µs ± 1%
@@ -137,7 +137,7 @@ _Chan_Million_Blocking_Writers-8          2.00M ± 0%
 _ZenQ_Million_Blocking_Writers-8          1.00M ± 0%
 ```
 
-The above results show that ZenQ is more efficient than channels in all 3 metrics i.e `ns/op`, `B/op` and `allocs/op` for the following tested cases:-
+The above results show that ZenQ is more efficient than channels in all 3 metrics i.e `time/op`, `mem_alloc/op` and `num_allocs/op` for the following tested cases:-
 
 1. SPSC
 2. MPSC with NUM_WRITER_GOROUTINES < NUM_CPU_CORES
