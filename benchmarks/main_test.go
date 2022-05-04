@@ -46,32 +46,9 @@ func Benchmark_Chan_NumWriters1000_InputSize7000000(b *testing.B) { chanTestRunn
 
 func Benchmark_ZenQ_NumWriters1000_InputSize7000000(b *testing.B) { zenqTestRunner(1000, 7000000, b) }
 
+// Test resource efficiency when there are large number of blocked goroutine writers
 const million uint64 = 1000000
 
-// func Benchmark_1Million_Chan_Blocking_Writers(b *testing.B) {
-// 	currSize = 100 * million
-// 	numConcurrentWriters = million
+// func Benchmark_Chan_Million_Blocking_Writers(b *testing.B) { chanTestRunner(million, 100*million, b) }
 
-// 	cleanup()
-// 	b.ResetTimer()
-// 	for n := 0; n < b.N; n++ {
-// 		for i := uint64(0); i < numConcurrentWriters; i++ {
-// 			go chanProducer()
-// 		}
-// 		chanConsumer()
-// 	}
-// }
-
-// func Benchmark_1Million_ZenQ_Blocking_Writers(b *testing.B) {
-// 	currSize = 100 * million
-// 	numConcurrentWriters = million
-
-// 	cleanup()
-// 	b.ResetTimer()
-// 	for n := 0; n < b.N; n++ {
-// 		for i := uint64(0); i < numConcurrentWriters; i++ {
-// 			go zenqProducer()
-// 		}
-// 		zenqConsumer()
-// 	}
-// }
+// func Benchmark_ZenQ_Million_Blocking_Writers(b *testing.B) { zenqTestRunner(million, 100*million, b) }

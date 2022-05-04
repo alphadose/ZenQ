@@ -85,6 +85,7 @@ func (self *ZenQ[T]) Write(value T) {
 	} else {
 		// case where large number of writer goroutines are contending for the same slot
 		// hence making them sleep via mutex.Lock() is more efficient resource wise
+		// Note:- this branch will never get invoked in case of SPSC (Single Producer Single Consumer) mode
 		sleeper := &self.contents[idx].Sleeper
 		sleeper.Lock()
 		// this ensures only 1 goroutine is contending for a particular slot
@@ -92,11 +93,11 @@ func (self *ZenQ[T]) Write(value T) {
 		for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 			runtime.Gosched()
 			// need access to goready() function from runtime internals to pre-empt this goroutine after parking
-			// unfortunatly the struct `g` to be used in goready() cannot be replicated in this plane
+			// unfortunatly the struct `g` to be used in goready() cannot be replicated so easily(maybe needs assembly stubs?)
 			// goparkunlock(sleeper, "test-parking", traceEvGoBlockSend, 2)
+			// doing so will save a lot more resources than simply mutex.Lock(), see `lib_runtime_linkage.go` in this folder
 		}
 		self.commit(idx, slotState, value)
-		// unlock(sleeper)
 		sleeper.Unlock()
 	}
 }

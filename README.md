@@ -143,7 +143,7 @@ The above results show that ZenQ is more efficient than channels in all 3 metric
 In SPSC mode ZenQ is faster than channels by **94 seconds** in case of input size 6 * 10<sup>8</sup>
 
 ```bash
-$ go run benchmarks/main.go
+❯ go run benchmarks/main.go
 
 With Input Batch Size: 60 and Num Concurrent Writers: 1
 

@@ -1,6 +1,7 @@
 package zenq
 
 import (
+	"unsafe"
 	_ "unsafe"
 )
 
@@ -10,12 +11,18 @@ import (
 // fetch the params *g used in goready() by using getg()
 // with this there will be significant improvement in performance
 
+// Alternative method is using assembly stubs to load the goroutine
+// stack pointer as demonstrated in https://github.com/sitano/gsysint
+
 type mutex struct {
 	// Futex-based impl treats it as uint32 key,
 	// while sema-based impl as M* waitm.
 	// Used to be a union, but unions break precise GC.
 	key uintptr
 }
+
+// The functions below are used for scheduling goroutines with exclusive control
+// Shifting to the below flow will remove the spinning implementation
 
 //go:linkname lock runtime.lock
 func lock(l *mutex)
@@ -25,6 +32,12 @@ func unlock(l *mutex)
 
 //go:linkname goparkunlock runtime.goparkunlock
 func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
+
+//go:linkname getg runtime.getg
+func getg() unsafe.Pointer
+
+//go:linkname goready runtime.goready
+func goready(goroutinePtr unsafe.Pointer, traceskip int)
 
 type waitReason uint8
 
