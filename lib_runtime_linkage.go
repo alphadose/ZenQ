@@ -22,7 +22,7 @@ type mutex struct {
 }
 
 // The functions below are used for scheduling goroutines with exclusive control
-// Shifting to the below flow will remove the spinning implementation
+// Shifting to the below flow will remove the spinning and mutex lock implementations
 
 //go:linkname lock runtime.lock
 func lock(l *mutex)

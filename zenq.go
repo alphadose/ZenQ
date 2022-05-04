@@ -23,7 +23,7 @@ import (
 
 const (
 	// The queue size, should be a power of 2
-	queueSize uint64 = 1 << 16
+	queueSize uint64 = 1 << 12
 
 	// Masking is faster than division, only works with numbers which are powers of 2
 	indexMask uint64 = queueSize - 1
@@ -42,9 +42,9 @@ type (
 
 	// Slot represents a single slot in ZenQ each one having its own state
 	Slot[T any] struct {
-		State   uint32
-		Sleeper sync.Mutex
-		Item    T
+		State  uint32
+		Parker ThreadParker
+		Item   T
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -62,16 +62,38 @@ type (
 	}
 )
 
+// ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
+// useful for saving up resources by putting excess goroutines to sleep and pre-empt them when required with minimal latency overhead
+type ThreadParker struct {
+	semaCount int64
+	sync.Mutex
+}
+
+// Park parks the current calling goroutine
+// Edge Case:- when semaCount is 0, the first calling goroutine needs to call this twice to be parked
+func (tp *ThreadParker) Park() {
+	tp.Lock()
+	atomic.AddInt64(&tp.semaCount, 1)
+}
+
+// Ready wakes up all sleeping goroutines associated with this ThreadParker object
+// Underlying implementation depends on the OS, for linux its futex, for BSD/MacOS its sema_wakeup etc
+func (tp *ThreadParker) Ready() {
+start:
+	ctr := atomic.LoadInt64(&tp.semaCount)
+	if ctr > 0 {
+		// this prevents race condition arising from multiple concurrent reader goroutines case
+		if atomic.CompareAndSwapInt64(&tp.semaCount, ctr, ctr-1) {
+			tp.Unlock()
+		} else {
+			goto start
+		}
+	}
+}
+
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	return new(ZenQ[T])
-}
-
-// commit write into a slot
-func (self *ZenQ[T]) commit(index uint64, slotState *uint32, value T) {
-	self.contents[index].Item = value
-	// commit write into the slot
-	atomic.StoreUint32(slotState, SlotCommitted)
 }
 
 // Write writes a value to the queue
@@ -79,27 +101,23 @@ func (self *ZenQ[T]) Write(value T) {
 	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
+	parker := &self.contents[idx].Parker
+
 	// CAS -> change slot_state to busy if slot_state == empty
-	if atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		self.commit(idx, slotState, value)
-	} else {
-		// case where large number of writer goroutines are contending for the same slot
-		// hence making them sleep via mutex.Lock() is more efficient resource wise
-		// Note:- this branch will never get invoked in case of SPSC (Single Producer Single Consumer) mode
-		sleeper := &self.contents[idx].Sleeper
-		sleeper.Lock()
-		// this ensures only 1 goroutine is contending for a particular slot
-		// at all times and other goroutines(if any) are sleeping
-		for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-			runtime.Gosched()
-			// need access to goready() function from runtime internals to pre-empt this goroutine after parking
-			// unfortunatly the struct `g` to be used in goready() cannot be replicated so easily(maybe needs assembly stubs?)
-			// goparkunlock(sleeper, "test-parking", traceEvGoBlockSend, 2)
-			// doing so will save a lot more resources than simply mutex.Lock(), see `lib_runtime_linkage.go` in this folder
-		}
-		self.commit(idx, slotState, value)
-		sleeper.Unlock()
+	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
+		// guaranteening low latency unless the user's reader thread is blocked for some reason
+		parker.Park()
 	}
+	self.contents[idx].Item = value
+	// commit write into the slot
+	atomic.StoreUint32(slotState, SlotCommitted)
+}
+
+// consume consumes a slot and marks it ready for writing
+func consume(slotState *uint32, parker *ThreadParker) {
+	atomic.StoreUint32(slotState, SlotEmpty)
+	parker.Ready()
 }
 
 // Read reads a value from the queue, you can once read once per object
@@ -107,9 +125,12 @@ func (self *ZenQ[T]) Read() T {
 	// Get reader slot index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
+	parker := &self.contents[idx].Parker
+
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
-	defer atomic.StoreUint32(slotState, SlotEmpty)
+	defer consume(slotState, parker)
+
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		runtime.Gosched()

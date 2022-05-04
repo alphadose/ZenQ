@@ -30,7 +30,7 @@ func NewPayload() *Payload {
 }
 
 const (
-	channelBufferSize = 1 << 16
+	channelBufferSize = 1 << 12
 )
 
 var (
