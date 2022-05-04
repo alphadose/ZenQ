@@ -1,5 +1,5 @@
 // A minimalist thread-safe queue implemented using a lock-free ringbuffer which is even faster
-// and more resource than golang's native channels
+// and more resource friendly than golang's native channels
 
 // Known Limitations:-
 //
