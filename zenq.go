@@ -3,7 +3,7 @@
 
 // Known Limitations:-
 //
-// 1. At most (2^64)-2 items can be written to the queue
+// 1. Current max queue_size = 2^63
 // 2. The size of the queue must be a power of 2
 
 // Suggestions:-
@@ -22,8 +22,10 @@ import (
 )
 
 const (
+	power uint64 = 12
+
 	// The queue size, should be a power of 2
-	queueSize uint64 = 1 << 12
+	queueSize uint64 = 1 << power
 
 	// Masking is faster than division, only works with numbers which are powers of 2
 	indexMask uint64 = queueSize - 1
