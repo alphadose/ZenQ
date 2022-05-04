@@ -62,28 +62,73 @@ Benchmarking code available [here](./benchmarks)
 Note that if you run the benchmarks with `--race` flag then ZenQ will perform slower because the `--race` flag slows
 down the atomic operations in golang. Under normal circumstances, ZenQ will outperform golang native channels.
 
+### Hardware Specs
+
+```
+❯ neofetch
+                    'c.          alphadose@ReiEki.local
+                 ,xNMM.          ----------------------
+               .OMMMMo           OS: macOS 12.3 21E230 arm64
+               OMMM0,            Host: MacBookAir10,1
+     .;loddo:' loolloddol;.      Kernel: 21.4.0
+   cKMMMMMMMMMMNWMMMMMMMMMM0:    Uptime: 6 hours, 41 mins
+ .KMMMMMMMMMMMMMMMMMMMMMMMWd.    Packages: 86 (brew)
+ XMMMMMMMMMMMMMMMMMMMMMMMX.      Shell: zsh 5.8
+;MMMMMMMMMMMMMMMMMMMMMMMM:       Resolution: 1440x900
+:MMMMMMMMMMMMMMMMMMMMMMMM:       DE: Aqua
+.MMMMMMMMMMMMMMMMMMMMMMMMX.      WM: Rectangle
+ kMMMMMMMMMMMMMMMMMMMMMMMMWd.    Terminal: iTerm2
+ .XMMMMMMMMMMMMMMMMMMMMMMMMMMk   Terminal Font: FiraCodeNerdFontComplete-Medium 16 (normal)
+  .XMMMMMMMMMMMMMMMMMMMMMMMMK.   CPU: Apple M1
+    kMMMMMMMMMMMMMMMMMMMMMMd     GPU: Apple M1
+     ;KMMMMMMMWXXWMMMMMMMk.      Memory: 1370MiB / 8192MiB
+       .cooc,.    .,coo:.
+
+```
+
 ### Terminology
 
 * NUM_WRITERS -> The number of goroutines concurrently writing to ZenQ/Channel
 * INPUT_SIZE -> The number of input payloads to be passed through ZenQ/Channel from producers to consumer
 
 ```bash
-$ go test -bench=. -benchmem benchmarks/*.go
+Computed from benchstat of 20 benchmarks each via go test -benchmem -bench=. benchmarks/*.go
 
-goos: darwin
-goarch: arm64
-Benchmark_Chan_NumWriters1_InputSize600-8       48772       23614 ns/op       0 B/op    0 allocs/op
-Benchmark_ZenQ_NumWriters1_InputSize600-8       73860       15984 ns/op       0 B/op    0 allocs/op
-Benchmark_Chan_NumWriters3_InputSize60000-8       216     5500119 ns/op     109 B/op    0 allocs/op
-Benchmark_ZenQ_NumWriters3_InputSize60000-8       411     2835585 ns/op       0 B/op    0 allocs/op
-Benchmark_Chan_NumWriters8_InputSize6000000-8       2   703887875 ns/op    1600 B/op    5 allocs/op
-Benchmark_ZenQ_NumWriters8_InputSize6000000-8       3   445850153 ns/op       0 B/op    0 allocs/op
-Benchmark_Chan_NumWriters100_InputSize6000000-8     1  1593555542 ns/op   39456 B/op  146 allocs/op
-Benchmark_ZenQ_NumWriters100_InputSize6000000-8     3   485728444 ns/op    3466 B/op    8 allocs/op
-Benchmark_Chan_NumWriters1000_InputSize7000000-8    1  1984590667 ns/op  497344 B/op 1817 allocs/op
-Benchmark_ZenQ_NumWriters1000_InputSize7000000-8    2   777197480 ns/op    8736 B/op   21 allocs/op
-PASS
-ok  	command-line-arguments	19.687s
+name                                     time/op
+_Chan_NumWriters1_InputSize600-8          23.2µs ± 0%
+_ZenQ_NumWriters1_InputSize600-8          16.4µs ± 1%
+_Chan_NumWriters3_InputSize60000-8        3.61ms ± 3%
+_ZenQ_NumWriters3_InputSize60000-8        2.96ms ± 2%
+_Chan_NumWriters8_InputSize6000000-8       701ms ± 1%
+_ZenQ_NumWriters8_InputSize6000000-8       458ms ± 1%
+_Chan_NumWriters100_InputSize6000000-8     1.57s ± 2%
+_ZenQ_NumWriters100_InputSize6000000-8     460ms ± 1%
+_Chan_NumWriters1000_InputSize7000000-8    1.96s ± 0%
+_ZenQ_NumWriters1000_InputSize7000000-8    548ms ± 1%
+
+name                                     alloc/op
+_Chan_NumWriters1_InputSize600-8           0.00B
+_ZenQ_NumWriters1_InputSize600-8           0.00B
+_Chan_NumWriters3_InputSize60000-8         74.5B ±62%
+_ZenQ_NumWriters3_InputSize60000-8        23.1B ±125%
+_Chan_NumWriters8_InputSize6000000-8       666B ±200%
+_ZenQ_NumWriters8_InputSize6000000-8       570B ±265%
+_Chan_NumWriters100_InputSize6000000-8    44.6kB ±21%
+_ZenQ_NumWriters100_InputSize6000000-8   4.25kB ±135%
+_Chan_NumWriters1000_InputSize7000000-8    480kB ± 7%
+_ZenQ_NumWriters1000_InputSize7000000-8  2.33kB ±239%
+
+name                                     allocs/op
+_Chan_NumWriters1_InputSize600-8            0.00
+_ZenQ_NumWriters1_InputSize600-8            0.00
+_Chan_NumWriters3_InputSize60000-8          0.00
+_ZenQ_NumWriters3_InputSize60000-8          0.00
+_Chan_NumWriters8_InputSize6000000-8        3.24 ±85%
+_ZenQ_NumWriters8_InputSize6000000-8       1.30 ±285%
+_Chan_NumWriters100_InputSize6000000-8       172 ±12%
+_ZenQ_NumWriters100_InputSize6000000-8     10.0 ±140%
+_Chan_NumWriters1000_InputSize7000000-8    1.78k ± 4%
+_ZenQ_NumWriters1000_InputSize7000000-8    5.47 ±247%
 ```
 
 The above results show that ZenQ is more efficient than channels in all 3 metrics i.e `ns/op`, `B/op` and `allocs/op` for the following tested cases:-
@@ -95,7 +140,7 @@ The above results show that ZenQ is more efficient than channels in all 3 metric
 
 ## Cherry on the Cake
 
-In SPSC mode ZenQ literally blasts native channels out of the picture with a gain of **94 seconds** in case of input size 6 * 10<sup>8</sup>
+In SPSC mode ZenQ is faster than channels by **94 seconds** in case of input size 6 * 10<sup>8</sup>
 
 ```bash
 $ go run benchmarks/main.go
