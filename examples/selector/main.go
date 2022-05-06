@@ -46,7 +46,7 @@ func main() {
 
 func intProducer(ctr int) { zq1.Write(ctr) }
 
-func stringProducer(ctr int) { zq2.Write(fmt.Sprint(ctr)) }
+func stringProducer(ctr int) { zq2.Write(fmt.Sprint(ctr * 10)) }
 
 func custom1Producer(ctr int) { zq3.Write(custom1{alpha: ctr, beta: fmt.Sprint(ctr)}) }
 

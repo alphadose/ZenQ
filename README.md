@@ -7,6 +7,7 @@
 * Much faster than native channels in both SPSC (single-producer-single-consumer) and MPSC (multi-producer-single-consumer) modes in terms of `time/op`
 * More resource efficient in terms of `memory_allocation/op` and `num_allocations/op` evident while benchmarking large batch size inputs
 * Handles the case where NUM_WRITER_GOROUTINES > NUM_CPU_CORES much better than native channels
+* Selection from multiple ZenQs just like golang's `select{}` ensuring fair selection and no starvation
 
 Benchmarks to support the above claims [here](#benchmarks)
 
@@ -20,6 +21,7 @@ $ go get github.com/alphadose/zenq@1.3.0
 
 ## Usage
 
+1. Simple Read/Write
 ```go
 package main
 
@@ -51,6 +53,69 @@ func main() {
 	for i := 0; i < 100; i++ {
         	var data payload = zq.Read()
 		fmt.Printf("%+v\n", data)
+	}
+}
+```
+
+2. **Selection** from multiple ZenQs just like golang's native `select{}`. The selection process is fair i.e no single ZenQ gets starved
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/alphadose/zenq"
+)
+
+type custom1 struct {
+	alpha int
+	beta  string
+}
+
+type custom2 struct {
+	gamma int
+}
+
+var (
+	zq1 = zenq.New[int]()
+	zq2 = zenq.New[string]()
+	zq3 = zenq.New[custom1]()
+	zq4 = zenq.New[*custom2]()
+)
+
+func main() {
+	go looper(intProducer)
+	go looper(stringProducer)
+	go looper(custom1Producer)
+	go looper(custom2Producer)
+
+	for i := 0; i < 40; i++ {
+
+		// Selection occurs here
+		switch data := zenq.Select(zq1, zq2, zq3, zq4).(type) {
+		case int:
+			fmt.Printf("Received int %d\n", data)
+		case string:
+			fmt.Printf("Received string %s\n", data)
+		case custom1:
+			fmt.Printf("Received custom data type number 1 %#v\n", data)
+		case *custom2:
+			fmt.Printf("Received pointer %#v\n", data)
+		}
+	}
+}
+
+func intProducer(ctr int) { zq1.Write(ctr) }
+
+func stringProducer(ctr int) { zq2.Write(fmt.Sprint(ctr * 10)) }
+
+func custom1Producer(ctr int) { zq3.Write(custom1{alpha: ctr, beta: fmt.Sprint(ctr)}) }
+
+func custom2Producer(ctr int) { zq4.Write(&custom2{gamma: 1 << ctr}) }
+
+func looper(producer func(ctr int)) {
+	for i := 0; i < 10; i++ {
+		producer(i)
 	}
 }
 ```
@@ -92,7 +157,7 @@ down the atomic operations in golang. Under normal circumstances, ZenQ will outp
 * INPUT_SIZE -> The number of input payloads to be passed through ZenQ/Channel from producers to consumer
 
 ```bash
-Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/*.go
+Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/simple/*.go
 
 name                                     time/op
 _Chan_NumWriters1_InputSize600-8         24.6µs ± 1%
@@ -149,7 +214,7 @@ The above results show that ZenQ is more efficient than channels in all 3 metric
 In SPSC mode ZenQ is faster than channels by **94 seconds** in case of input size 6 * 10<sup>8</sup>
 
 ```bash
-❯ go run benchmarks/main.go
+❯ go run benchmarks/simple/main.go
 
 With Input Batch Size: 60 and Num Concurrent Writers: 1
 
