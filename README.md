@@ -1,6 +1,6 @@
 # ZenQ
 
-> A low-latency thread-safe queue in golang implemented using a lock-free ringbuffer
+> A low-latency thread-safe queue in golang implemented using a lock-free ringbuffer also possessing select{} capabilities
 
 ## Features
 
@@ -249,7 +249,7 @@ ZenQ Runner completed transfer in: 20.466423125s
 
 For a `select{}` based transfer experiment these are the results
 ```bash
-❯ go run benchmarks/selector.go/main.go
+❯ go run benchmarks/selector/main.go
 
 Chan Select Runner completed transfer in: 2m42.313942333s
 ZenQ Select Runner completed transfer in: 41.938121583s
