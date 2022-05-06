@@ -16,7 +16,7 @@ Benchmarks to support the above claims [here](#benchmarks)
 You need Golang [1.18.x](https://go.dev/dl/) or above since this package uses generics
 
 ```bash
-$ go get github.com/alphadose/zenq@1.3.0
+$ go get github.com/alphadose/zenq@1.4.0
 ```
 
 ## Usage
