@@ -51,16 +51,18 @@ type (
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
-		// The padding members 1 to 4 below are here to ensure each item is on a separate cache line.
+		// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
 		_p1         cacheLinePadding
 		writerIndex uint64
 		_p2         cacheLinePadding
 		readerIndex uint64
 		_p3         cacheLinePadding
+		subscriber  *ZenQ[any]
+		_p4         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
-		_p4      cacheLinePadding
+		_p5      cacheLinePadding
 	}
 )
 
@@ -100,6 +102,12 @@ func New[T any]() *ZenQ[T] {
 
 // Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
+	// if a selector has subscribed to this queue, send data to the selector directly which is another ZenQ
+	if self.subscriber != nil {
+		self.subscriber.Send(value)
+		return
+	}
+
 	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
@@ -114,6 +122,7 @@ func (self *ZenQ[T]) Write(value T) {
 	self.contents[idx].Item = value
 	// commit write into the slot
 	atomic.StoreUint32(slotState, SlotCommitted)
+
 }
 
 // consume consumes a slot and marks it ready for writing

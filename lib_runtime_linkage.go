@@ -34,7 +34,13 @@ func unlock(l *mutex)
 func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
 
 //go:linkname getg runtime.getg
-func getg() unsafe.Pointer
+func getg() any
+
+//go:linkname Fastrand runtime.fastrand
+func Fastrand() uint32
+
+//go:linkname fastlog2 runtime.fastlog2
+func fastlog2(x float64) float64
 
 //go:linkname goready runtime.goready
 func goready(goroutinePtr unsafe.Pointer, traceskip int)
