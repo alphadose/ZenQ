@@ -58,7 +58,7 @@ type (
 		_p2         cacheLinePadding
 		readerIndex uint64
 		_p3         cacheLinePadding
-		subscriber  *ZenQ[any]
+		numReads    uint64
 		_p4         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
@@ -102,12 +102,6 @@ func New[T any]() *ZenQ[T] {
 
 // Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
-	// if a selector has subscribed to this queue, send data to the selector directly which is another ZenQ
-	if self.subscriber != nil {
-		self.subscriber.Send(value)
-		return
-	}
-
 	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
@@ -122,7 +116,6 @@ func (self *ZenQ[T]) Write(value T) {
 	self.contents[idx].Item = value
 	// commit write into the slot
 	atomic.StoreUint32(slotState, SlotCommitted)
-
 }
 
 // consume consumes a slot and marks it ready for writing
@@ -135,6 +128,7 @@ func consume(slotState *uint32, parker *ThreadParker) {
 func (self *ZenQ[T]) Read() T {
 	// Get reader slot index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
+	atomic.AddUint64(&self.numReads, 1)
 	slotState := &self.contents[idx].State
 	parker := &self.contents[idx].Parker
 
@@ -147,6 +141,19 @@ func (self *ZenQ[T]) Read() T {
 		runtime.Gosched()
 	}
 	return self.contents[idx].Item
+}
+
+// Check and Poll implement the Selectable interface
+
+// Check returns the number of reads committed to the queue and whether the queue is ready for reading or not
+func (self *ZenQ[T]) Check() (uint64, bool) {
+	idx := atomic.LoadUint64(&self.readerIndex)
+	return atomic.LoadUint64(&self.numReads), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
+}
+
+// Poll polls
+func (self *ZenQ[T]) Poll() any {
+	return self.Read()
 }
 
 // Dump dumps the current queue state

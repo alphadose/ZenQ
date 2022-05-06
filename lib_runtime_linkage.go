@@ -27,6 +27,9 @@ type mutex struct {
 //go:linkname lock runtime.lock
 func lock(l *mutex)
 
+//go:linkname nanotime runtime.nanotime
+func nanotime() int64
+
 //go:linkname unlock runtime.unlock
 func unlock(l *mutex)
 
