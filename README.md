@@ -246,3 +246,13 @@ Native Channel Runner completed transfer in: 1m53.85855875s
 ZenQ Runner completed transfer in: 20.466423125s
 ====================================================================
 ```
+
+For a `select{}` based transfer experiment these are the results
+```bash
+❯ go run benchmarks/selector.go/main.go
+
+Chan Select Runner completed transfer in: 2m42.313942333s
+ZenQ Select Runner completed transfer in: 41.938121583s
+```
+
+Code available [here](./benchmarks/selector/main.go)

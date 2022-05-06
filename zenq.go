@@ -147,7 +147,7 @@ func (self *ZenQ[T]) Read() T {
 
 // Check returns the number of reads committed to the queue and whether the queue is ready for reading or not
 func (self *ZenQ[T]) Check() (uint64, bool) {
-	idx := atomic.LoadUint64(&self.readerIndex)
+	idx := atomic.LoadUint64(&self.readerIndex) & indexMask
 	return atomic.LoadUint64(&self.numReads), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
 }
 
