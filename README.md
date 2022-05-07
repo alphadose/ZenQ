@@ -1,6 +1,6 @@
 # ZenQ
 
-> A low-latency thread-safe queue in golang implemented using a lock-free ringbuffer also possessing select{} capabilities
+> A low-latency thread-safe queue in golang implemented using a lock-free ringbuffer
 
 ## Features
 
