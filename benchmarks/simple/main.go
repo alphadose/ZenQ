@@ -39,7 +39,7 @@ var (
 	currSize uint64 = throughput[0]
 
 	// input batch size
-	throughput = []uint64{60, 600, 6000, 6000000, 600000000}
+	throughput = []uint64{60, 600, 6e3, 6e6, 6e8}
 	// throughput = []uint64{5}
 
 	// Number of writers/producers which will be writing to the queue concurrently
