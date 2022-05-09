@@ -17,7 +17,6 @@ package zenq
 import (
 	"fmt"
 	"runtime"
-	"sync"
 	"sync/atomic"
 )
 
@@ -57,8 +56,6 @@ type (
 		writerIndex uint64
 		_p2         cacheLinePadding
 		readerIndex uint64
-		_p3         cacheLinePadding
-		numReads    uint64
 		_p4         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
@@ -69,30 +66,21 @@ type (
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
 // useful for saving up resources by putting excess goroutines to sleep and pre-empt them when required with minimal latency overhead
 type ThreadParker struct {
-	semaCount int64
-	sync.Mutex
+	sema    uint32
+	waiting uint64
 }
 
 // Park parks the current calling goroutine
 // Edge Case:- when semaCount is 0, the first calling goroutine needs to call this twice to be parked
 func (tp *ThreadParker) Park() {
-	tp.Lock()
-	atomic.AddInt64(&tp.semaCount, 1)
+	atomic.AddUint64(&tp.waiting, 1)
+	runtime_SemacquireMutex(&tp.sema, true, 1)
 }
 
 // Ready wakes up all sleeping goroutines associated with this ThreadParker object
 // Underlying implementation depends on the OS, for linux its futex, for BSD/MacOS its sema_wakeup etc
 func (tp *ThreadParker) Ready() {
-start:
-	ctr := atomic.LoadInt64(&tp.semaCount)
-	if ctr > 0 {
-		// this prevents race condition arising from multiple concurrent reader goroutines case
-		if atomic.CompareAndSwapInt64(&tp.semaCount, ctr, ctr-1) {
-			tp.Unlock()
-		} else {
-			goto start
-		}
-	}
+	runtime_Semrelease(&tp.sema, true, 1)
 }
 
 // New returns a new queue given its payload type passed as a generic parameter
@@ -128,7 +116,7 @@ func consume(slotState *uint32, parker *ThreadParker) {
 func (self *ZenQ[T]) Read() T {
 	// Get reader slot index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
-	atomic.AddUint64(&self.numReads, 1)
+	// atomic.AddUint64(&self.numReads, 1)
 	slotState := &self.contents[idx].State
 	parker := &self.contents[idx].Parker
 
@@ -148,7 +136,7 @@ func (self *ZenQ[T]) Read() T {
 // Check returns the number of reads committed to the queue and whether the queue is ready for reading or not
 func (self *ZenQ[T]) Check() (uint64, bool) {
 	idx := atomic.LoadUint64(&self.readerIndex) & indexMask
-	return atomic.LoadUint64(&self.numReads), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
+	return atomic.LoadUint64(&self.readerIndex), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
 }
 
 // Poll polls

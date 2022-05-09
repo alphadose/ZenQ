@@ -113,15 +113,38 @@ func cleanup() {
 }
 
 func main() {
-	cleanup()
-	for _, tput := range throughput {
-		currSize = tput
-		fmt.Printf("With Input Batch Size: %d and Num Concurrent Writers: %d\n", currSize, numConcurrentWriters)
-		fmt.Print("\n")
+	// cleanup()
+	// for _, tput := range throughput {
+	// 	currSize = tput
+	// 	fmt.Printf("With Input Batch Size: %d and Num Concurrent Writers: %d\n", currSize, numConcurrentWriters)
+	// 	fmt.Print("\n")
 
-		// Run tests
-		measureTime(chanRunner, "Native Channel")
-		measureTime(zenqRunner, "ZenQ")
-		fmt.Print("====================================================================\n\n")
-	}
+	// 	// Run tests
+	// 	measureTime(chanRunner, "Native Channel")
+	// 	measureTime(zenqRunner, "ZenQ")
+	// 	fmt.Print("====================================================================\n\n")
+	// }
+	var s uint32 = 0
+	runtime_Semrelease(&s, false, 1)
+	runtime_SemacquireMutex(&s, true, 1)
+	runtime_SemacquireMutex(&s, true, 1)
+	println("meow")
+	// for i := 0; i < 1e6; i++ {
+	// 	go func() {
+	// 		runtime_SemacquireMutex(&s, true, 1)
+	// 		println("meow")
+	// 	}()
+	// }
+	// go func() {
+	// 	runtime_SemacquireMutex(&s, true, 1)
+	// 	println("meow")
+	// }()
+	// time.Sleep(5 * time.Second)
+	// // runtime_SemacquireMutex(&s, true, 1)
+	// runtime_Semrelease(&s, true, 1)
+	// fmt.Println(s)
+	// runtime_Semrelease(&s, true, 1)
+	// fmt.Println(s)
+	// runtime_Semrelease(&s, false, 1)
+	// fmt.Println(s)
 }

@@ -1,4 +1,4 @@
-package zenq
+package main
 
 import (
 	"unsafe"
@@ -70,9 +70,6 @@ func runtime_SemacquireMutex(s *uint32, lifo bool, skipframes int)
 // runtime_Semrelease's caller.
 //go:linkname runtime_Semrelease sync.runtime_Semrelease
 func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
-
-//go:linkname goyield runtime.goyield
-func goyield()
 
 type waitReason uint8
 
