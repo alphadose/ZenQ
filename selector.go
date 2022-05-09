@@ -13,6 +13,7 @@ type Selectable interface {
 // Select selects a single element out of multiple ZenQs
 // The return value is determined by which ZenQ has the current least number of reads
 // This ensures fairness and equal distribution of selection, and ensurses no single ZenQ starves
+// TODO: remove polling implementation
 func Select(streams ...Selectable) any {
 	leastReads := uintMaxSize
 	var mostDeserving Selectable

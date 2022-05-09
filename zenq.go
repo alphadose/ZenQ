@@ -57,7 +57,7 @@ type (
 		_p2         cacheLinePadding
 		readerIndex uint64
 		_p3         cacheLinePadding
-		numReads    uint64
+		numPolls    uint64
 		_p4         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
@@ -119,11 +119,12 @@ func (self *ZenQ[T]) Read() T {
 // Check returns the number of reads committed to the queue and whether the queue is ready for reading or not
 func (self *ZenQ[T]) Check() (uint64, bool) {
 	idx := atomic.LoadUint64(&self.readerIndex) & indexMask
-	return atomic.LoadUint64(&self.numReads), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
+	return atomic.LoadUint64(&self.numPolls), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
 }
 
 // Poll polls
 func (self *ZenQ[T]) Poll() any {
+	atomic.AddUint64(&self.numPolls, 1)
 	return self.Read()
 }
 
