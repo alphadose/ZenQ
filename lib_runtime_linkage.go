@@ -48,8 +48,8 @@ func fastlog2(x float64) float64
 //go:linkname goready runtime.goready
 func goready(goroutinePtr unsafe.Pointer, traceskip int)
 
-//go:linkname Gopark runtime.gopark
-func Gopark(unlockf func(unsafe.Pointer, unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceEv byte, traceskip int)
+//go:linkname gopark runtime.gopark
+func gopark(unlockf func(unsafe.Pointer, unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceEv byte, traceskip int)
 
 func Chanparkcommit(gp unsafe.Pointer, chanLock unsafe.Pointer) bool {
 	// gp.activeStackChans = true
@@ -60,7 +60,6 @@ func Chanparkcommit(gp unsafe.Pointer, chanLock unsafe.Pointer) bool {
 	// so gp could continue running before everything before
 	// the unlock is visible (even to gp itself).
 	// unlock((*mutex)(chanLock))
-	// println("meow")
 	return true
 }
 
@@ -152,3 +151,28 @@ const (
 	// The remaining 2 bits are used to specify the number of arguments.
 	// That means, the max event type value is 63.
 )
+
+// Comparison before and after linking with this
+// name                                     old time/op    new time/op    delta
+// _ZenQ_NumWriters1_InputSize600-8           16.5µs ± 1%    17.9µs ± 1%   +8.65%  (p=0.000 n=28+29)
+// _ZenQ_NumWriters3_InputSize60000-8         2.85ms ± 0%    2.67ms ± 6%   -6.11%  (p=0.000 n=23+30)
+// _ZenQ_NumWriters8_InputSize6000000-8        417ms ± 0%     313ms ± 5%  -24.83%  (p=0.000 n=23+29)
+// _ZenQ_NumWriters100_InputSize6000000-8      741ms ± 3%     516ms ± 2%  -30.40%  (p=0.000 n=29+30)
+// _ZenQ_NumWriters1000_InputSize7000000-8     1.05s ± 1%     0.45s ± 9%  -57.58%  (p=0.000 n=28+30)
+// _ZenQ_Million_Blocking_Writers-8            7.01s ±44%    10.98s ± 4%  +56.54%  (p=0.000 n=30+28)
+
+// name                                     old alloc/op   new alloc/op   delta
+// _ZenQ_NumWriters1_InputSize600-8            0.00B          0.00B          ~     (all equal)
+// _ZenQ_NumWriters3_InputSize60000-8         28.9B ±111%    34.8B ±127%     ~     (p=0.268 n=30+29)
+// _ZenQ_NumWriters8_InputSize6000000-8        885B ±163%     671B ±222%     ~     (p=0.208 n=30+30)
+// _ZenQ_NumWriters100_InputSize6000000-8     16.2kB ±66%   13.3kB ±100%     ~     (p=0.072 n=30+30)
+// _ZenQ_NumWriters1000_InputSize7000000-8    62.4kB ±82%    2.4kB ±210%  -96.20%  (p=0.000 n=30+30)
+// _ZenQ_Million_Blocking_Writers-8           95.9MB ± 0%    95.5MB ± 0%   -0.41%  (p=0.000 n=28+30)
+
+// name                                     old allocs/op  new allocs/op  delta
+// _ZenQ_NumWriters1_InputSize600-8             0.00           0.00          ~     (all equal)
+// _ZenQ_NumWriters3_InputSize60000-8           0.00           0.00          ~     (all equal)
+// _ZenQ_NumWriters8_InputSize6000000-8        2.07 ±142%     1.40 ±186%     ~     (p=0.081 n=30+30)
+// _ZenQ_NumWriters100_InputSize6000000-8       53.5 ±50%     31.8 ±100%  -40.60%  (p=0.000 n=30+30)
+// _ZenQ_NumWriters1000_InputSize7000000-8       525 ±39%        6 ±227%  -98.95%  (p=0.000 n=30+30)
+// _ZenQ_Million_Blocking_Writers-8            1.00M ± 0%     0.99M ± 0%   -0.41%  (p=0.000 n=28+29)

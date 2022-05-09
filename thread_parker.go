@@ -18,6 +18,7 @@ type ThreadParker struct {
 	sync.Mutex
 }
 
+// used for storing the goroutine pointer *g
 func zenqParkCommit(gp unsafe.Pointer, tp unsafe.Pointer) bool {
 	obj := (*ThreadParker)(tp)
 	atomic.StorePointer(&obj.parkedThread, gp)
@@ -27,11 +28,11 @@ func zenqParkCommit(gp unsafe.Pointer, tp unsafe.Pointer) bool {
 // Park parks the current calling goroutine
 func (tp *ThreadParker) Park() {
 	tp.Lock()
-	Gopark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
+	gopark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
 	tp.Unlock()
 }
 
-// Ready calls the longest waiting time parked goroutine which in turns unblocks other writer goroutines
+// Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() {
 	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
 		goready(g, 1)
