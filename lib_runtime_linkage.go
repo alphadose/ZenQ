@@ -74,6 +74,15 @@ func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
 //go:linkname goyield runtime.goyield
 func goyield()
 
+// Active spinning runtime support.
+// runtime_canSpin reports whether spinning makes sense at the moment.
+//go:linkname runtime_canSpin sync.runtime_canSpin
+func runtime_canSpin(i int) bool
+
+// runtime_doSpin does active spinning.
+//go:linkname runtime_doSpin sync.runtime_doSpin
+func runtime_doSpin()
+
 type waitReason uint8
 
 const (

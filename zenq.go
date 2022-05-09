@@ -65,22 +65,21 @@ type (
 
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
 // useful for saving up resources by putting excess goroutines to sleep and pre-empt them when required with minimal latency overhead
-type ThreadParker struct {
-	sema    uint32
-	waiting uint64
-}
+type ThreadParker uint32
 
 // Park parks the current calling goroutine
 // Edge Case:- when semaCount is 0, the first calling goroutine needs to call this twice to be parked
 func (tp *ThreadParker) Park() {
-	atomic.AddUint64(&tp.waiting, 1)
-	runtime_SemacquireMutex(&tp.sema, true, 1)
+	runtime_SemacquireMutex((*uint32)(tp), false, 1)
+	// runtime_Semacquire((*uint32)(tp))
 }
 
 // Ready wakes up all sleeping goroutines associated with this ThreadParker object
 // Underlying implementation depends on the OS, for linux its futex, for BSD/MacOS its sema_wakeup etc
 func (tp *ThreadParker) Ready() {
-	runtime_Semrelease(&tp.sema, true, 1)
+	if atomic.LoadUint32((*uint32)(tp)) == 0 {
+		runtime_Semrelease((*uint32)(tp), true, 1)
+	}
 }
 
 // New returns a new queue given its payload type passed as a generic parameter
@@ -97,6 +96,9 @@ func (self *ZenQ[T]) Write(value T) {
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+		for iter := 0; runtime_canSpin(iter); iter++ {
+			runtime_doSpin()
+		}
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
 		parker.Park()
