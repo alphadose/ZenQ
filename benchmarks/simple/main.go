@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/alphadose/zenq"
 )
@@ -126,6 +128,12 @@ func main() {
 	// <-ch
 	// println("here")
 	// println(P)
+	var v unsafe.Pointer
+	fmt.Println(atomic.LoadPointer(&v))
+	atomic.StorePointer(&v, nil)
+	if atomic.LoadPointer(&v) == nil {
+		println("kekw")
+	}
 	cleanup()
 	for _, tput := range throughput {
 		currSize = tput
