@@ -17,7 +17,6 @@ package zenq
 import (
 	"fmt"
 	"runtime"
-	"sync"
 	"sync/atomic"
 )
 
@@ -66,35 +65,6 @@ type (
 	}
 )
 
-// ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
-// useful for saving up resources by putting excess goroutines to sleep and pre-empt them when required with minimal latency overhead
-type ThreadParker struct {
-	semaCount int64
-	sync.Mutex
-}
-
-// Park parks the current calling goroutine
-// Edge Case:- when semaCount is 0, the first calling goroutine needs to call this twice to be parked
-func (tp *ThreadParker) Park() {
-	tp.Lock()
-	atomic.AddInt64(&tp.semaCount, 1)
-}
-
-// Ready wakes up all sleeping goroutines associated with this ThreadParker object
-// Underlying implementation depends on the OS, for linux its futex, for BSD/MacOS its sema_wakeup etc
-func (tp *ThreadParker) Ready() {
-start:
-	ctr := atomic.LoadInt64(&tp.semaCount)
-	if ctr > 0 {
-		// this prevents race condition arising from multiple concurrent reader goroutines case
-		if atomic.CompareAndSwapInt64(&tp.semaCount, ctr, ctr-1) {
-			tp.Unlock()
-		} else {
-			goto start
-		}
-	}
-}
-
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	return new(ZenQ[T])
@@ -128,7 +98,7 @@ func consume(slotState *uint32, parker *ThreadParker) {
 func (self *ZenQ[T]) Read() T {
 	// Get reader slot index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
-	atomic.AddUint64(&self.numReads, 1)
+	// atomic.AddUint64(&self.numReads, 1)
 	slotState := &self.contents[idx].State
 	parker := &self.contents[idx].Parker
 
@@ -138,6 +108,7 @@ func (self *ZenQ[T]) Read() T {
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
+		parker.Ready()
 		runtime.Gosched()
 	}
 	return self.contents[idx].Item

@@ -1,4 +1,4 @@
-package zenq
+package main
 
 import (
 	"unsafe"
@@ -51,7 +51,12 @@ func goready(goroutinePtr unsafe.Pointer, traceskip int)
 //go:linkname Gopark runtime.gopark
 func Gopark(unlockf func(unsafe.Pointer, unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceEv byte, traceskip int)
 
+var P unsafe.Pointer
+
 func Chanparkcommit(gp unsafe.Pointer, chanLock unsafe.Pointer) bool {
+	println("meow")
+	P = gp
+	// fmt.Println(gp)
 	// gp.activeStackChans = true
 	// atomic.Store8(&gp.parkingOnChan, 0)
 	// Make sure we unlock after setting activeStackChans and
@@ -60,7 +65,7 @@ func Chanparkcommit(gp unsafe.Pointer, chanLock unsafe.Pointer) bool {
 	// so gp could continue running before everything before
 	// the unlock is visible (even to gp itself).
 	// unlock((*mutex)(chanLock))
-	// println("meow")
+
 	return true
 }
 

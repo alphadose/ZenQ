@@ -39,7 +39,7 @@ var (
 	currSize uint64 = throughput[0]
 
 	// input batch size
-	throughput = []uint64{60, 600, 6000, 6000000, 600000000}
+	throughput = []uint64{60, 600, 6000, 6000000, 6e8}
 	// throughput = []uint64{5}
 
 	// Number of writers/producers which will be writing to the queue concurrently
@@ -113,6 +113,19 @@ func cleanup() {
 }
 
 func main() {
+	// lock := &mutex{}
+	// ch := make(chan int)
+	// go func() {
+	// 	Gopark(Chanparkcommit, nil, waitReasonSleep, traceEvGoBlock, 1)
+	// 	println("bhow")
+	// 	ch <- 1
+	// }()
+	// time.Sleep(1 * time.Second)
+	// println(P)
+	// goready(P, 1)
+	// <-ch
+	// println("here")
+	// println(P)
 	cleanup()
 	for _, tput := range throughput {
 		currSize = tput
