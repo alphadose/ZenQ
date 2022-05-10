@@ -106,10 +106,16 @@ func (self *ZenQ[T]) Read() T {
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
 	defer consume(slotState, parker)
 
+	iter := 0
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		parker.Ready()
-		runtime.Gosched()
+		if runtime_canSpin(iter) {
+			iter++
+			runtime_doSpin()
+		} else {
+			runtime.Gosched()
+		}
 	}
 	return self.contents[idx].Item
 }

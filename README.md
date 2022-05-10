@@ -160,30 +160,30 @@ down the atomic operations in golang. Under normal circumstances, ZenQ will outp
 Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/simple/*.go
 
 name                                     time/op
-_Chan_NumWriters1_InputSize600-8          23.3µs ± 1%
-_ZenQ_NumWriters1_InputSize600-8          17.9µs ± 1%
-_Chan_NumWriters3_InputSize60000-8        5.48ms ± 3%
+_Chan_NumWriters1_InputSize600-8          23.2µs ± 1%
+_ZenQ_NumWriters1_InputSize600-8          18.1µs ± 1%
+_Chan_NumWriters3_InputSize60000-8        5.52ms ± 3%
 _ZenQ_NumWriters3_InputSize60000-8        2.67ms ± 6%
-_Chan_NumWriters8_InputSize6000000-8       679ms ± 1%
-_ZenQ_NumWriters8_InputSize6000000-8       313ms ± 5%
-_Chan_NumWriters100_InputSize6000000-8     1.58s ± 1%
-_ZenQ_NumWriters100_InputSize6000000-8     516ms ± 2%
-_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 1%
-_ZenQ_NumWriters1000_InputSize7000000-8    445ms ± 9%
-_Chan_Million_Blocking_Writers-8           10.8s ± 1%
-_ZenQ_Million_Blocking_Writers-8           11.0s ± 4%
+_Chan_NumWriters8_InputSize6000000-8       680ms ± 1%
+_ZenQ_NumWriters8_InputSize6000000-8       308ms ± 4%
+_Chan_NumWriters100_InputSize6000000-8     1.56s ± 6%
+_ZenQ_NumWriters100_InputSize6000000-8     519ms ± 2%
+_Chan_NumWriters1000_InputSize7000000-8    1.98s ± 1%
+_ZenQ_NumWriters1000_InputSize7000000-8    441ms ±11%
+_Chan_Million_Blocking_Writers-8           10.4s ± 3%
+_ZenQ_Million_Blocking_Writers-8           8.56s ±24%
 
 name                                     alloc/op
 _Chan_NumWriters1_InputSize600-8           0.00B
 _ZenQ_NumWriters1_InputSize600-8           0.00B
-_Chan_NumWriters3_InputSize60000-8         95.0B ±65%
-_ZenQ_NumWriters3_InputSize60000-8        34.8B ±127%
-_Chan_NumWriters8_InputSize6000000-8       878B ±272%
-_ZenQ_NumWriters8_InputSize6000000-8       671B ±222%
-_Chan_NumWriters100_InputSize6000000-8    46.0kB ±31%
-_ZenQ_NumWriters100_InputSize6000000-8   13.3kB ±100%
-_Chan_NumWriters1000_InputSize7000000-8    488kB ± 8%
-_ZenQ_NumWriters1000_InputSize7000000-8  2.37kB ±210%
+_Chan_NumWriters3_InputSize60000-8          110B ±68%
+_ZenQ_NumWriters3_InputSize60000-8        23.6B ±107%
+_Chan_NumWriters8_InputSize6000000-8       585B ±234%
+_ZenQ_NumWriters8_InputSize6000000-8       411B ±299%
+_Chan_NumWriters100_InputSize6000000-8    44.7kB ±35%
+_ZenQ_NumWriters100_InputSize6000000-8    19.7kB ±78%
+_Chan_NumWriters1000_InputSize7000000-8    483kB ±10%
+_ZenQ_NumWriters1000_InputSize7000000-8  1.13kB ±602%
 _Chan_Million_Blocking_Writers-8           553MB ± 0%
 _ZenQ_Million_Blocking_Writers-8          95.5MB ± 0%
 
@@ -192,12 +192,12 @@ _Chan_NumWriters1_InputSize600-8            0.00
 _ZenQ_NumWriters1_InputSize600-8            0.00
 _Chan_NumWriters3_InputSize60000-8          0.00
 _ZenQ_NumWriters3_InputSize60000-8          0.00
-_Chan_NumWriters8_InputSize6000000-8       2.77 ±225%
-_ZenQ_NumWriters8_InputSize6000000-8       1.40 ±186%
-_Chan_NumWriters100_InputSize6000000-8       164 ±20%
-_ZenQ_NumWriters100_InputSize6000000-8     31.8 ±100%
-_Chan_NumWriters1000_InputSize7000000-8    1.79k ± 3%
-_ZenQ_NumWriters1000_InputSize7000000-8    5.50 ±227%
+_Chan_NumWriters8_InputSize6000000-8       2.20 ±218%
+_ZenQ_NumWriters8_InputSize6000000-8       0.90 ±344%
+_Chan_NumWriters100_InputSize6000000-8       163 ±18%
+_ZenQ_NumWriters100_InputSize6000000-8      47.0 ±79%
+_Chan_NumWriters1000_InputSize7000000-8    1.79k ± 6%
+_ZenQ_NumWriters1000_InputSize7000000-8    2.00 ±550%
 _Chan_Million_Blocking_Writers-8           2.00M ± 0%
 _ZenQ_Million_Blocking_Writers-8            995k ± 0%
 ```

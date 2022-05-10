@@ -63,6 +63,18 @@ func Chanparkcommit(gp unsafe.Pointer, chanLock unsafe.Pointer) bool {
 	return true
 }
 
+// Active spinning runtime support.
+// runtime_canSpin reports whether spinning makes sense at the moment.
+//go:linkname runtime_canSpin sync.runtime_canSpin
+func runtime_canSpin(i int) bool
+
+// runtime_doSpin does active spinning.
+//go:linkname runtime_doSpin sync.runtime_doSpin
+func runtime_doSpin()
+
+//go:linkname runtime_nanotime sync.runtime_nanotime
+func runtime_nanotime() int64
+
 type waitReason uint8
 
 const (
