@@ -21,6 +21,9 @@ func zenqParkCommit(gp unsafe.Pointer, tp unsafe.Pointer) bool {
 }
 
 // Park parks the current calling goroutine
+// This keeps only one parked goroutine in state at all times
+// the parked goroutine is called with minimal overhead with goread() due to both being in userland
+// This ensures there is no thunderind herd https://en.wikipedia.org/wiki/Thundering_herd_problem
 func (tp *ThreadParker) Park() {
 	tp.Lock()
 	gopark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
