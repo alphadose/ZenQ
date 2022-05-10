@@ -21,13 +21,13 @@ import (
 )
 
 const (
-	power uint64 = 12
+	power = 12
 
 	// The queue size, should be a power of 2
-	queueSize uint64 = 1 << power
+	queueSize = 1 << power
 
 	// Masking is faster than division, only works with numbers which are powers of 2
-	indexMask uint64 = queueSize - 1
+	indexMask = queueSize - 1
 )
 
 // ZenQ Slot state enums
