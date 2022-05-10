@@ -6,11 +6,6 @@ import (
 	"unsafe"
 )
 
-const (
-	StateEmpty uint32 = iota
-	StateParked
-)
-
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
 // useful for saving up resources by parking excess goroutines and pre-empt them when required with minimal latency overhead
 type ThreadParker struct {
