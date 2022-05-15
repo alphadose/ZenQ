@@ -31,13 +31,13 @@ func zenqParkCommit(gp, tp unsafe.Pointer) bool {
 func (tp *ThreadParker) Park() {
 	atomic.AddInt64(&tp.waiters, 1)
 	runtime_SemacquireMutex(&tp.sema, false, 1)
-	gopark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
+	GoPark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
 	runtime_Semrelease(&tp.sema, atomic.AddInt64(&tp.waiters, -1) > 0, 1)
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() {
 	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
-		goready(g, 1)
+		GoReady(g, 1)
 	}
 }

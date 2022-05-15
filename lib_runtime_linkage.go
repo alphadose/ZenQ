@@ -14,7 +14,7 @@ import (
 // Alternative method is using assembly stubs to load the goroutine
 // stack pointer as demonstrated in https://github.com/sitano/gsysint
 
-type mutex struct {
+type Mutex struct {
 	// Futex-based impl treats it as uint32 key,
 	// while sema-based impl as M* waitm.
 	// Used to be a union, but unions break precise GC.
@@ -24,33 +24,33 @@ type mutex struct {
 // The functions below are used for scheduling goroutines with exclusive control
 // Shifting to the below flow will remove the spinning and mutex lock implementations
 
-//go:linkname lock runtime.lock
-func lock(l *mutex)
+//go:linkname Lock runtime.lock
+func Lock(l *Mutex)
 
-//go:linkname nanotime runtime.nanotime
-func nanotime() int64
+//go:linkname Nanotime runtime.nanotime
+func Nanotime() int64
 
-//go:linkname unlock runtime.unlock
-func unlock(l *mutex)
+//go:linkname Unlock runtime.unlock
+func Unlock(l *Mutex)
 
-//go:linkname goparkunlock runtime.goparkunlock
-func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
+//go:linkname Goparkunlock runtime.goparkunlock
+func Goparkunlock(lock *Mutex, reason waitReason, traceEv byte, traceskip int)
 
 // func getg() any
 
-// func GetG() unsafe.Pointer
+func GetG() unsafe.Pointer
 
 //go:linkname Fastrand runtime.fastrand
 func Fastrand() uint32
 
-//go:linkname fastlog2 runtime.fastlog2
-func fastlog2(x float64) float64
+//go:linkname Fastlog2 runtime.fastlog2
+func Fastlog2(x float64) float64
 
-//go:linkname goready runtime.goready
-func goready(goroutinePtr unsafe.Pointer, traceskip int)
+//go:linkname GoReady runtime.goready
+func GoReady(goroutinePtr unsafe.Pointer, traceskip int)
 
-//go:linkname gopark runtime.gopark
-func gopark(unlockf func(unsafe.Pointer, unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceEv byte, traceskip int)
+//go:linkname GoPark runtime.gopark
+func GoPark(unlockf func(unsafe.Pointer, unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceEv byte, traceskip int)
 
 func Chanparkcommit(gp unsafe.Pointer, chanLock unsafe.Pointer) bool {
 	// gp.activeStackChans = true
