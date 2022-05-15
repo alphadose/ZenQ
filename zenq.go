@@ -44,7 +44,7 @@ type (
 	// Slot represents a single slot in ZenQ each one having its own state
 	Slot[T any] struct {
 		State  uint32
-		Parker ThreadParker
+		Parker *ThreadParker
 		Item   T
 	}
 
@@ -67,7 +67,11 @@ type (
 
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
-	return new(ZenQ[T])
+	var contents [queueSize]Slot[T]
+	for idx := range contents {
+		contents[idx].Parker = NewThreadParker()
+	}
+	return &ZenQ[T]{contents: contents}
 }
 
 // Write writes a value to the queue
@@ -75,7 +79,7 @@ func (self *ZenQ[T]) Write(value T) {
 	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	parker := &self.contents[idx].Parker
+	parker := self.contents[idx].Parker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
@@ -100,7 +104,7 @@ func (self *ZenQ[T]) Read() T {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	// atomic.AddUint64(&self.numReads, 1)
 	slotState := &self.contents[idx].State
-	parker := &self.contents[idx].Parker
+	parker := self.contents[idx].Parker
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
