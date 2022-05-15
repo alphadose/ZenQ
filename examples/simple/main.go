@@ -1,6 +1,8 @@
 package main
 
 import (
+	"unsafe"
+
 	"github.com/alphadose/zenq"
 )
 
@@ -9,8 +11,16 @@ type payload struct {
 	beta  string
 }
 
+var p unsafe.Pointer
+
 func main() {
-	println(zenq.GetG())
+	go func() {
+		ptr := zenq.GetG()
+		println(ptr)
+		zenq.Goparkunlock(&zenq.Mutex{}, 19, 25, 1)
+		println("meow")
+	}()
+	zenq.GoReady(p, 1)
 	// zq := zenq.New[payload]()
 
 	// for j := 0; j < 5; j++ {
