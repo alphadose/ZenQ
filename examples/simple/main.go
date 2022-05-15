@@ -16,13 +16,16 @@ var p unsafe.Pointer
 
 func main() {
 	go func() {
-		ptr := zenq.GetG()
-		println(ptr)
-		zenq.Goparkunlock(&zenq.Mutex{}, 19, 25, 1)
+		p = zenq.GetG()
+		println(p)
+		l := &zenq.Mutex{}
+		zenq.Lock(l)
+		zenq.Goparkunlock(l, 19, 25, 1)
 		println("meow")
 	}()
 	time.Sleep(4 * time.Second)
 	zenq.GoReady(p, 1)
+	time.Sleep(4 * time.Second)
 	// zq := zenq.New[payload]()
 
 	// for j := 0; j < 5; j++ {
