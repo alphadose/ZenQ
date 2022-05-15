@@ -18,7 +18,7 @@ type ThreadParker struct {
 }
 
 // used for storing the goroutine pointer *g
-func zenqParkCommit(gp unsafe.Pointer, tp unsafe.Pointer) bool {
+func zenqParkCommit(gp, tp unsafe.Pointer) bool {
 	obj := (*ThreadParker)(tp)
 	atomic.StorePointer(&obj.parkedThread, gp)
 	return true

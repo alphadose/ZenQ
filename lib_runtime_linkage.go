@@ -36,8 +36,9 @@ func unlock(l *mutex)
 //go:linkname goparkunlock runtime.goparkunlock
 func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
 
-//go:linkname getg runtime.getg
-func getg() any
+// func getg() any
+
+// func GetG() unsafe.Pointer
 
 //go:linkname Fastrand runtime.fastrand
 func Fastrand() uint32
@@ -100,6 +101,12 @@ func runtime_Semrelease(s *uint32, handoff bool, skipframes int)
 
 //go:linkname goyield runtime.goyield
 func goyield()
+
+//go:linkname mcall runtime.mcall
+func mcall(fn func(unsafe.Pointer))
+
+//go:linkname park_m runtime.park_m
+func park_m(gp unsafe.Pointer)
 
 type waitReason uint8
 
