@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"unsafe"
 
 	"github.com/alphadose/zenq"
@@ -20,6 +21,7 @@ func main() {
 		zenq.Goparkunlock(&zenq.Mutex{}, 19, 25, 1)
 		println("meow")
 	}()
+	time.Sleep(4 * time.Second)
 	zenq.GoReady(p, 1)
 	// zq := zenq.New[payload]()
 
