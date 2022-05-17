@@ -1,7 +1,6 @@
 package zenq
 
 import (
-	"runtime"
 	"sync/atomic"
 	"unsafe"
 )
@@ -18,13 +17,6 @@ type ThreadParker struct {
 	parkedThread unsafe.Pointer
 }
 
-// used for storing the goroutine pointer *g
-func zenqParkCommit(gp, tp unsafe.Pointer) bool {
-	// obj := (*ThreadParker)(tp)
-	// atomic.StorePointer(&obj.parkedThread, gp)
-	return true
-}
-
 // Park parks the current calling goroutine
 // This keeps only one parked goroutine in state at all times
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
@@ -32,23 +24,18 @@ func zenqParkCommit(gp, tp unsafe.Pointer) bool {
 func (tp *ThreadParker) Park() {
 	atomic.AddInt64(&tp.waiters, 1)
 	runtime_SemacquireMutex(&tp.sema, false, 1)
-	atomic.StorePointer(&tp.parkedThread, GetG())
+	gp := GetG()
+	casgstatus(gp, _Grunning, _Gwaiting)
+	atomic.StorePointer(&tp.parkedThread, gp)
 	FastPark()
 	runtime_Semrelease(&tp.sema, atomic.AddInt64(&tp.waiters, -1) > 0, 1)
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
-func (tp *ThreadParker) Ready() {
+func (tp *ThreadParker) Ready() bool {
 	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
-		for Readgstatus(g) != _Gwaiting {
-			// println(Readgstatus(g))
-			// runtime_doSpin()
-			runtime.Gosched()
-
-		}
-		// for status := Readgstatus(g); status != _Grunning && status != _Gscanrunning; status = Readgstatus(g) {
-		// 	println(status)
-		// }
 		GoReady(g, 1)
+		return true
 	}
+	return false
 }

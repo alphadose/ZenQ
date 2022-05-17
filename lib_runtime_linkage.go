@@ -121,7 +121,7 @@ func dropg()
 func schedule()
 
 func fast_park(gp unsafe.Pointer) {
-	casgstatus(gp, _Grunning, _Gwaiting)
+	// casgstatus(gp, _Grunning, _Gwaiting)
 	dropg()
 	schedule()
 }

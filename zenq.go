@@ -114,6 +114,7 @@ func (self *ZenQ[T]) Read() T {
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		parker.Ready()
+		// runtime_doSpin()
 		if runtime_canSpin(iter) {
 			iter++
 			runtime_doSpin()

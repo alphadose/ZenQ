@@ -1,10 +1,8 @@
 package main
 
 import (
-	"time"
+	"fmt"
 	"unsafe"
-
-	"github.com/alphadose/zenq"
 )
 
 type payload struct {
@@ -15,18 +13,26 @@ type payload struct {
 var p unsafe.Pointer
 
 func main() {
-	go func() {
-		p = zenq.GetG()
-		println(p)
-		// l := &zenq.Mutex{}
-		// zenq.Lock(l)
-		// zenq.Goparkunlock(l, 19, 25, 1)
-		zenq.FastPark()
-		println("meow")
-	}()
-	time.Sleep(2 * time.Second)
-	zenq.GoReady(p, 1)
-	time.Sleep(2 * time.Second)
+	// go func() {
+	// 	p = zenq.GetG()
+	// 	println(p)
+	// 	// l := &zenq.Mutex{}
+	// 	// zenq.Lock(l)
+	// 	// zenq.Goparkunlock(l, 19, 25, 1)
+	// 	zenq.FastPark()
+	// 	println("meow")
+	// }()
+	// time.Sleep(2 * time.Second)
+	// zenq.GoReady(p, 1)
+	// time.Sleep(2 * time.Second)
+
+	k := NewList()
+	// k.Inject(1)
+	// k.Inject(2)
+	// k.Inject(3)
+	fmt.Println(k.Pop())
+	fmt.Println(k.Pop())
+	fmt.Println(k.Pop())
 	// zq := zenq.New[payload]()
 
 	// for j := 0; j < 5; j++ {
