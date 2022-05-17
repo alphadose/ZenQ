@@ -3,9 +3,14 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"unsafe"
 )
+
+var pool = sync.Pool{
+	New: func() any { return new(element) },
+}
 
 var deletedElement = "deleted"
 
@@ -196,7 +201,7 @@ func (self *element) isDeleted() bool {
 	return false
 }
 func (self *element) add(c Thing) (rval bool) {
-	alloc := &element{}
+	alloc := pool.Get().(*element)
 	for {
 		/*
 		 If we are deleted then we do not allow adding new children.
