@@ -18,14 +18,15 @@ func main() {
 	go func() {
 		p = zenq.GetG()
 		println(p)
-		l := &zenq.Mutex{}
-		zenq.Lock(l)
-		zenq.Goparkunlock(l, 19, 25, 1)
+		// l := &zenq.Mutex{}
+		// zenq.Lock(l)
+		// zenq.Goparkunlock(l, 19, 25, 1)
+		zenq.FastPark()
 		println("meow")
 	}()
-	time.Sleep(4 * time.Second)
+	time.Sleep(2 * time.Second)
 	zenq.GoReady(p, 1)
-	time.Sleep(4 * time.Second)
+	time.Sleep(2 * time.Second)
 	// zq := zenq.New[payload]()
 
 	// for j := 0; j < 5; j++ {

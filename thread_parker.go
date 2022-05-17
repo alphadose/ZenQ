@@ -1,6 +1,7 @@
 package zenq
 
 import (
+	"runtime"
 	"sync/atomic"
 	"unsafe"
 )
@@ -32,14 +33,22 @@ func (tp *ThreadParker) Park() {
 	atomic.AddInt64(&tp.waiters, 1)
 	runtime_SemacquireMutex(&tp.sema, false, 1)
 	atomic.StorePointer(&tp.parkedThread, GetG())
-	mcall(park_m)
-	// GoPark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
+	FastPark()
 	runtime_Semrelease(&tp.sema, atomic.AddInt64(&tp.waiters, -1) > 0, 1)
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() {
 	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
+		for Readgstatus(g) != _Gwaiting {
+			// println(Readgstatus(g))
+			// runtime_doSpin()
+			runtime.Gosched()
+
+		}
+		// for status := Readgstatus(g); status != _Grunning && status != _Gscanrunning; status = Readgstatus(g) {
+		// 	println(status)
+		// }
 		GoReady(g, 1)
 	}
 }
