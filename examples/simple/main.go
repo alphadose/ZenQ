@@ -27,9 +27,10 @@ func main() {
 	// time.Sleep(2 * time.Second)
 
 	k := NewList()
-	// k.Inject(1)
-	// k.Inject(2)
-	// k.Inject(3)
+	k.Push(1)
+	k.Push(2)
+	k.Push(3)
+	fmt.Println(k.Pop())
 	fmt.Println(k.Pop())
 	fmt.Println(k.Pop())
 	fmt.Println(k.Pop())
