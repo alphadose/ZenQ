@@ -13,6 +13,8 @@ var nodePool = sync.Pool{
 
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
 // useful for saving up resources by parking excess goroutines and pre-empt them when required with minimal latency overhead
+// Uses a thread safe linked list for storing goroutine references
+// theory from https://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 type ThreadParker struct {
 	head unsafe.Pointer
 	tail unsafe.Pointer
@@ -20,8 +22,11 @@ type ThreadParker struct {
 
 // NewThreadParker returns a new thread parker.
 func NewThreadParker() *ThreadParker {
-	n := unsafe.Pointer(new(node))
-	return &ThreadParker{head: n, tail: n}
+	n := nodePool.Get().(*node)
+	n.value = nil
+	n.next = nil
+	ptr := unsafe.Pointer(n)
+	return &ThreadParker{head: ptr, tail: ptr}
 }
 
 type node struct {
@@ -34,13 +39,8 @@ type node struct {
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
 func (tp *ThreadParker) Park() {
-	// n := nodePool.Get().(*node)
-	// n.value = GetG()
 	tp.enqueue()
 	mcall(fast_park)
-	// n.value = nil
-	// n.next = nil
-	// nodePool.Put(n)
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
@@ -61,7 +61,9 @@ func (tp *ThreadParker) Ready() {
 
 // enqueue puts the current goroutine pointer at the tail of the list
 func (q *ThreadParker) enqueue() {
-	n := &node{value: GetG()}
+	n := nodePool.Get().(*node)
+	n.value = GetG()
+	n.next = nil
 	for {
 		tail := load(&q.tail)
 		next := load(&tail.next)
@@ -97,6 +99,7 @@ func (q *ThreadParker) dequeue() unsafe.Pointer {
 				// read value before CAS otherwise another dequeue might free the next node
 				v := next.value
 				if cas(&q.head, head, next) {
+					nodePool.Put(head)
 					return v // Dequeue is done.  return
 				}
 			}
