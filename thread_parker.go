@@ -29,32 +29,17 @@ type node struct {
 	next  unsafe.Pointer
 }
 
-// used for storing the goroutine pointer *g
-func zenqParkCommit(gp, tp unsafe.Pointer) bool {
-	// obj := (*parkCommit)(n)
-	// obj.n.value = gp
-	// obj.tp.Enqueue(obj.n)
-	t := (*ThreadParker)(tp)
-	n := nodePool.Get().(*node)
-	n.value = gp
-	t.Enqueue(n)
-	return true
-}
-
 // Park parks the current calling goroutine
 // This keeps only one parked goroutine in state at all times
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
 func (tp *ThreadParker) Park() {
-	// n := dtoPool.Get().(*parkCommit)
-	// n.n = nodePool.Get().(*node)
-	// n.tp = tp
-	// GoPark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
-	n := nodePool.Get().(*node)
-	n.value = GetG()
-	tp.Enqueue(n)
+	// n := nodePool.Get().(*node)
+	// n.value = GetG()
+	tp.Enqueue(&node{value: GetG()})
 	mcall(fast_park)
-	n.value = nil
+	// n.value = nil
+	// n.next = nil
 	// nodePool.Put(n)
 }
 
@@ -64,6 +49,7 @@ func (tp *ThreadParker) Ready() {
 		iter := 0
 		for Readgstatus(node.value) != _Gwaiting {
 			if runtime_canSpin(iter) {
+				iter++
 				runtime_doSpin()
 			} else {
 				runtime.Gosched()
