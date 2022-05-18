@@ -36,7 +36,7 @@ type node struct {
 func (tp *ThreadParker) Park() {
 	// n := nodePool.Get().(*node)
 	// n.value = GetG()
-	tp.Enqueue(&node{value: GetG()})
+	tp.enqueue()
 	mcall(fast_park)
 	// n.value = nil
 	// n.next = nil
@@ -45,9 +45,9 @@ func (tp *ThreadParker) Park() {
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() {
-	if node := tp.Dequeue(); node != nil {
+	if gp := tp.dequeue(); gp != nil {
 		iter := 0
-		for Readgstatus(node.value) != _Gwaiting {
+		for Readgstatus(gp) != _Gwaiting {
 			if runtime_canSpin(iter) {
 				iter++
 				runtime_doSpin()
@@ -55,13 +55,13 @@ func (tp *ThreadParker) Ready() {
 				runtime.Gosched()
 			}
 		}
-		GoReady(node.value, 1)
-		// nodePool.Put(node)
+		GoReady(gp, 1)
 	}
 }
 
-// Enqueue puts the given value v at the tail of the queue.
-func (q *ThreadParker) Enqueue(n *node) {
+// enqueue puts the current goroutine pointer at the tail of the list
+func (q *ThreadParker) enqueue() {
+	n := &node{value: GetG()}
 	for {
 		tail := load(&q.tail)
 		next := load(&tail.next)
@@ -79,9 +79,9 @@ func (q *ThreadParker) Enqueue(n *node) {
 	}
 }
 
-// Dequeue removes and returns the value at the head of the queue.
-// It returns nil if the queue is empty.
-func (q *ThreadParker) Dequeue() *node {
+// dequeue removes and returns the value at the head of the queue
+// It returns nil if the queue is empty
+func (q *ThreadParker) dequeue() unsafe.Pointer {
 	for {
 		head := load(&q.head)
 		tail := load(&q.tail)
@@ -95,7 +95,7 @@ func (q *ThreadParker) Dequeue() *node {
 				cas(&q.tail, tail, next)
 			} else {
 				// read value before CAS otherwise another dequeue might free the next node
-				v := next
+				v := next.value
 				if cas(&q.head, head, next) {
 					return v // Dequeue is done.  return
 				}
