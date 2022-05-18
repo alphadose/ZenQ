@@ -1,6 +1,7 @@
 package zenq
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -8,10 +9,6 @@ import (
 
 var nodePool = sync.Pool{
 	New: func() any { return new(node) },
-}
-
-var dtoPool = sync.Pool{
-	New: func() any { return new(parkCommit) },
 }
 
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
@@ -32,18 +29,15 @@ type node struct {
 	next  unsafe.Pointer
 }
 
-type parkCommit struct {
-	tp *ThreadParker
-	n  *node
-}
-
 // used for storing the goroutine pointer *g
 func zenqParkCommit(gp, tp unsafe.Pointer) bool {
 	// obj := (*parkCommit)(n)
 	// obj.n.value = gp
 	// obj.tp.Enqueue(obj.n)
 	t := (*ThreadParker)(tp)
-	t.Enqueue(&node{value: gp})
+	n := nodePool.Get().(*node)
+	n.value = gp
+	t.Enqueue(n)
 	return true
 }
 
@@ -55,16 +49,28 @@ func (tp *ThreadParker) Park() {
 	// n := dtoPool.Get().(*parkCommit)
 	// n.n = nodePool.Get().(*node)
 	// n.tp = tp
-	GoPark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
-	// n.tp = nil
+	// GoPark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
+	n := nodePool.Get().(*node)
+	n.value = GetG()
+	tp.Enqueue(n)
+	mcall(fast_park)
+	n.value = nil
 	// nodePool.Put(n)
-	// dtoPool.Put(n)
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() {
 	if node := tp.Dequeue(); node != nil {
+		iter := 0
+		for Readgstatus(node.value) != _Gwaiting {
+			if runtime_canSpin(iter) {
+				runtime_doSpin()
+			} else {
+				runtime.Gosched()
+			}
+		}
 		GoReady(node.value, 1)
+		// nodePool.Put(node)
 	}
 }
 
