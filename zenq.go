@@ -43,9 +43,9 @@ type (
 
 	// Slot represents a single slot in ZenQ each one having its own state
 	Slot[T any] struct {
-		State  uint32
-		Parker *ThreadParker
-		Item   T
+		State       uint32
+		WriteParker *ThreadParker
+		Item        T
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -69,7 +69,7 @@ type (
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
 	for idx := range contents {
-		contents[idx].Parker = NewThreadParker()
+		contents[idx].WriteParker = NewThreadParker()
 	}
 	return &ZenQ[T]{contents: contents}
 }
@@ -79,13 +79,20 @@ func (self *ZenQ[T]) Write(value T) {
 	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	parker := self.contents[idx].Parker
+	writeParker := self.contents[idx].WriteParker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		parker.Park()
+		switch atomic.LoadUint32(slotState) {
+		case SlotBusy:
+			runtime.Gosched()
+		case SlotEmpty:
+			continue
+		case SlotCommitted:
+			writeParker.Park()
+		}
 	}
 	self.contents[idx].Item = value
 	// commit write into the slot
@@ -93,9 +100,9 @@ func (self *ZenQ[T]) Write(value T) {
 }
 
 // consume consumes a slot and marks it ready for writing
-func consume(slotState *uint32, parker *ThreadParker) {
+func consume(slotState *uint32, writeParker *ThreadParker) {
 	atomic.StoreUint32(slotState, SlotEmpty)
-	parker.Ready()
+	writeParker.Ready()
 }
 
 // Read reads a value from the queue, you can once read once per object
@@ -104,22 +111,33 @@ func (self *ZenQ[T]) Read() T {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	// atomic.AddUint64(&self.numReads, 1)
 	slotState := &self.contents[idx].State
-	parker := self.contents[idx].Parker
+	writeParker := self.contents[idx].WriteParker
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
-	defer consume(slotState, parker)
+	defer consume(slotState, writeParker)
 
 	iter := 0
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
-		parker.Ready()
-		// runtime_doSpin()
-		if runtime_canSpin(iter) {
-			iter++
-			runtime_doSpin()
-		} else {
-			runtime.Gosched()
+		switch atomic.LoadUint32(slotState) {
+		case SlotBusy:
+			if runtime_canSpin(iter) {
+				iter++
+				runtime_doSpin()
+			} else {
+				runtime.Gosched()
+			}
+		case SlotEmpty:
+			writeParker.Ready()
+			if runtime_canSpin(iter) {
+				iter++
+				runtime_doSpin()
+			} else {
+				runtime.Gosched()
+			}
+		case SlotCommitted:
+			continue
 		}
 	}
 	return self.contents[idx].Item

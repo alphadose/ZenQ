@@ -201,7 +201,8 @@ func (self *element) isDeleted() bool {
 	return false
 }
 func (self *element) add(c Thing) (rval bool) {
-	alloc := pool.Get().(*element)
+	alloc := new(element)
+	// alloc := pool.Get().(*element)
 	for {
 		/*
 		 If we are deleted then we do not allow adding new children.
@@ -356,6 +357,7 @@ func (self *element) remove() (rval Thing, ok bool) {
 			self.next()
 			rval = n.value
 			ok = true
+			// pool.Put(n)
 			break
 		}
 		n = self.next()
