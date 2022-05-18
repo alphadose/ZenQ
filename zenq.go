@@ -129,8 +129,7 @@ func (self *ZenQ[T]) Read() T {
 				runtime.Gosched()
 			}
 		case SlotEmpty:
-			writeParker.Ready()
-			if runtime_canSpin(iter) {
+			if writeParker.Ready() && runtime_canSpin(iter) {
 				iter++
 				runtime_doSpin()
 			} else {

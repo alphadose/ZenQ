@@ -44,7 +44,7 @@ func (tp *ThreadParker) Park() {
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
-func (tp *ThreadParker) Ready() {
+func (tp *ThreadParker) Ready() (readied bool) {
 	if gp := tp.dequeue(); gp != nil {
 		iter := 0
 		for Readgstatus(gp) != _Gwaiting {
@@ -56,7 +56,9 @@ func (tp *ThreadParker) Ready() {
 			}
 		}
 		GoReady(gp, 1)
+		return true
 	}
+	return false
 }
 
 // enqueue puts the current goroutine pointer at the tail of the list
