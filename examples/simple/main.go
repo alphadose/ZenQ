@@ -26,14 +26,14 @@ func main() {
 	// zenq.GoReady(p, 1)
 	// time.Sleep(2 * time.Second)
 
-	k := NewList()
-	k.Push(1)
-	k.Push(2)
-	k.Push(3)
-	fmt.Println(k.Pop())
-	fmt.Println(k.Pop())
-	fmt.Println(k.Pop())
-	fmt.Println(k.Pop())
+	k := NewLKQueue()
+	k.Enqueue(1)
+	k.Enqueue(2)
+	k.Enqueue(3)
+	fmt.Println(k.Dequeue())
+	fmt.Println(k.Dequeue())
+	fmt.Println(k.Dequeue())
+	fmt.Println(k.Dequeue())
 	// zq := zenq.New[payload]()
 
 	// for j := 0; j < 5; j++ {
