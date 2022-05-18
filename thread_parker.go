@@ -101,6 +101,7 @@ func (q *ThreadParker) dequeue() unsafe.Pointer {
 				// read value before CAS otherwise another dequeue might free the next node
 				v := next.value
 				if cas(&q.head, head, next) {
+					// sysFreeOS(unsafe.Pointer(head), nodeSize)
 					nodePool.Put(head)
 					return v // Dequeue is done.  return
 				}

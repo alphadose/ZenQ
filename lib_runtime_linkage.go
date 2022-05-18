@@ -120,6 +120,15 @@ func dropg()
 //go:linkname schedule runtime.schedule
 func schedule()
 
+//go:linkname mallocgc runtime.mallocgc
+func mallocgc(size uintptr, typ unsafe.Pointer, needzero bool) unsafe.Pointer
+
+//go:linkname sysFree runtime.sysFree
+func sysFree(v unsafe.Pointer, n uintptr, sysStat unsafe.Pointer)
+
+//go:linkname sysFreeOS runtime.sysFreeOS
+func sysFreeOS(v unsafe.Pointer, n uintptr)
+
 func fast_park(gp unsafe.Pointer) {
 	dropg()
 	casgstatus(gp, _Grunning, _Gwaiting)
