@@ -36,8 +36,10 @@ func (tp *ThreadParker) Park() {
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
-func (tp *ThreadParker) Ready() {
+func (tp *ThreadParker) Ready() bool {
 	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
 		goready(g, 1)
+		return true
 	}
+	return false
 }
