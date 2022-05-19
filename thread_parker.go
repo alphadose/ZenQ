@@ -17,10 +17,9 @@ type ThreadParker struct {
 	parkedThread unsafe.Pointer
 }
 
-// used for storing the goroutine pointer *g
-func zenqParkCommit(gp, tp unsafe.Pointer) bool {
-	obj := (*ThreadParker)(tp)
-	atomic.StorePointer(&obj.parkedThread, gp)
+// used for storing the goroutine pointer *g which will be later called via Ready()
+func zenqParkCommit(gp, threadParkingLocation unsafe.Pointer) bool {
+	atomic.StorePointer((*unsafe.Pointer)(threadParkingLocation), gp)
 	return true
 }
 
@@ -31,12 +30,13 @@ func zenqParkCommit(gp, tp unsafe.Pointer) bool {
 func (tp *ThreadParker) Park() {
 	atomic.AddInt64(&tp.waiters, 1)
 	runtime_SemacquireMutex(&tp.sema, false, 1)
-	gopark(zenqParkCommit, unsafe.Pointer(tp), waitReasonSleep, traceEvGoBlock, 1)
+	gopark(zenqParkCommit, unsafe.Pointer(&tp.parkedThread), waitReasonSleep, traceEvGoBlock, 1)
 	runtime_Semrelease(&tp.sema, atomic.AddInt64(&tp.waiters, -1) > 0, 1)
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
-func (tp *ThreadParker) Ready() bool {
+// It returns if it was able to ready a goroutine or not based on availability
+func (tp *ThreadParker) Ready() (readied bool) {
 	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
 		goready(g, 1)
 		return true
