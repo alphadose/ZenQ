@@ -141,8 +141,11 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				return getDefault[T](), false
 			}
 		case SlotClosed:
+			if !atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
+				runtime.Gosched()
+				continue
+			}
 			atomic.StoreUint32(&self.globalState, StateClosedForReads)
-			atomic.StoreUint32(slotState, SlotEmpty)
 			return getDefault[T](), false
 		case SlotCommitted:
 			continue
