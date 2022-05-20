@@ -181,7 +181,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			q.Write(i)
-			_ = q.Read()
+			_, _ = q.Read()
 		}
 	})
 
@@ -191,7 +191,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 			for pb.Next() {
 				for i := 0; i < 100; i++ {
 					q.Write(i)
-					_ = q.Read()
+					_, _ = q.Read()
 				}
 			}
 		})
@@ -203,7 +203,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 			for pb.Next() {
 				for i := 0; i < 100; i++ {
 					q.Write(i)
-					_ = q.Read()
+					_, _ = q.Read()
 				}
 			}
 		})
@@ -231,7 +231,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 			go func(q *Queue) {
 				defer wg.Done()
 				for i := 0; i < b.N; i++ {
-					_ = q.Read()
+					_, _ = q.Read()
 				}
 
 			}(qs[i])
@@ -256,7 +256,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
-				_ = q.Read()
+				_, _ = q.Read()
 				work()
 			}
 		}()
@@ -285,7 +285,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
 					for i := 0; i < 100; i++ {
-						_ = q.Read()
+						_, _ = q.Read()
 						work()
 					}
 				}
@@ -307,7 +307,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 				var v int
 				q1.Write(v)
 				work()
-				_ = q2.Read()
+				_, _ = q2.Read()
 			}
 			wg.Done()
 		}()
@@ -315,7 +315,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 		go func() {
 			for i := 0; i < b.N; i++ {
 				var v int
-				_ = q1.Read()
+				_, _ = q1.Read()
 				work()
 				q2.Write(v)
 			}

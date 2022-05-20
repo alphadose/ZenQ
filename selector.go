@@ -7,7 +7,7 @@ const uintMaxSize uint32 = 1<<32 - 1
 // Selectable is an an interface for getting selected among many others
 type Selectable interface {
 	Check() (uint32, bool)
-	Poll() any
+	Poll() (any, any)
 }
 
 // Select selects a single element out of multiple ZenQs
@@ -26,7 +26,8 @@ func Select(streams ...Selectable) any {
 			}
 		}
 		if mostDeserving != nil {
-			return mostDeserving.Poll()
+			val, _ := mostDeserving.Poll()
+			return val
 		}
 		// No streams are ready for reading, context switch and then loop again after getting back the context
 		// This is required for making this function non-blocking so that on single core systems the CPU doesnt get blocked

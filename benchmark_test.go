@@ -122,7 +122,7 @@ func benchmarkProduceConsumeZenQ(b *testing.B, t test) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < readsPerConsumer; i++ {
-				_ = q.Read()
+				_, _ = q.Read()
 			}
 		}()
 	}

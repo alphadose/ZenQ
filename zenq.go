@@ -63,7 +63,7 @@ type (
 		_p2         cacheLinePadding
 		readerIndex uint64
 		_p3         cacheLinePadding
-		GlobalState uint32
+		globalState uint32
 		_p4         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
@@ -91,7 +91,7 @@ func (self *ZenQ[T]) Write(value T) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		if atomic.LoadUint32(&self.GlobalState) == StateClosed {
+		if atomic.LoadUint32(&self.globalState) == StateClosed {
 			return
 		}
 		parker.Park()
@@ -108,10 +108,9 @@ func consume(slotState *uint32, parker *ThreadParker) {
 }
 
 // Read reads a value from the queue, you can once read once per object
-func (self *ZenQ[T]) Read() T {
+func (self *ZenQ[T]) Read() (data T, open bool) {
 	// Get reader slot index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
-	// atomic.AddUint64(&self.numReads, 1)
 	slotState := &self.contents[idx].State
 	parker := self.contents[idx].Parker
 
@@ -121,7 +120,7 @@ func (self *ZenQ[T]) Read() T {
 
 	iter := 0
 	// CAS -> change slot_state to busy if slot_state == committed
-	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) && atomic.LoadUint32(&self.GlobalState) == StateOpen {
+	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
 			if runtime_canSpin(iter) {
@@ -131,22 +130,26 @@ func (self *ZenQ[T]) Read() T {
 				runtime.Gosched()
 			}
 		case SlotEmpty:
-			if parker.Ready() && runtime_canSpin(iter) {
-				iter++
-				runtime_doSpin()
+			if atomic.LoadUint32(&self.globalState) == StateOpen {
+				if parker.Ready() && runtime_canSpin(iter) {
+					iter++
+					runtime_doSpin()
+				} else {
+					runtime.Gosched()
+				}
 			} else {
-				runtime.Gosched()
+				return *new(T), false
 			}
 		case SlotCommitted:
 			continue
 		}
 	}
-	return self.contents[idx].Item
+	return self.contents[idx].Item, atomic.LoadUint32(&self.globalState) == StateOpen
 }
 
 // Close closes the ZenQ for further read/writes
 func (self *ZenQ[T]) Close() {
-	atomic.StoreUint32(&self.GlobalState, StateClosed)
+	atomic.StoreUint32(&self.globalState, StateClosed)
 }
 
 // Check and Poll implement the Selectable interface
@@ -154,12 +157,12 @@ func (self *ZenQ[T]) Close() {
 // Check returns the number of reads committed to the queue and whether the queue is ready for reading or not
 func (self *ZenQ[T]) Check() (uint32, bool) {
 	idx := atomic.LoadUint64(&self.readerIndex) & indexMask
-	return atomic.LoadUint32(&self.GlobalState), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
+	return atomic.LoadUint32(&self.globalState), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
 }
 
 // Poll polls
-func (self *ZenQ[T]) Poll() any {
-	atomic.AddUint32(&self.GlobalState, 1)
+func (self *ZenQ[T]) Poll() (any, any) {
+	atomic.AddUint32(&self.globalState, 1)
 	return self.Read()
 }
 

@@ -87,7 +87,8 @@ func zenqProducer() {
 
 func zenqConsumer() {
 	for i := uint64(0); i < currSize; i++ {
-		validatePayload(zq.Read())
+		data, _ := zq.Read()
+		validatePayload(data)
 	}
 }
 

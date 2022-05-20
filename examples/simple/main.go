@@ -33,7 +33,8 @@ func main() {
 	defer runtime.UnlockOSThread()
 
 	for i := 0; i < 100; i++ {
-		var data payload = zq.Read()
-		fmt.Printf("%+v\n", data)
+		if data, open := zq.Read(); open {
+			fmt.Printf("%+v\n", data)
+		}
 	}
 }
