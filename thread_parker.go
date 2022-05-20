@@ -1,6 +1,7 @@
 package zenq
 
 import (
+	"runtime"
 	"sync/atomic"
 	"unsafe"
 )
@@ -34,7 +35,7 @@ func (tp *ThreadParker) Park() {
 	runtime_Semrelease(&tp.sema, atomic.AddInt64(&tp.waiters, -1) > 0, 1)
 }
 
-// Ready calls the parked goroutine if any and moves other goroutines up the queue
+// Ready calls a single parked goroutine if any and moves other goroutines up the queue
 // It returns if it was able to ready a goroutine or not based on availability
 func (tp *ThreadParker) Ready() (readied bool) {
 	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
@@ -42,4 +43,17 @@ func (tp *ThreadParker) Ready() (readied bool) {
 		return true
 	}
 	return false
+}
+
+// Release releases all parked goroutines
+func (tp *ThreadParker) Release() {
+	iter := 0
+	for atomic.LoadInt64(&tp.waiters) > 0 {
+		if tp.Ready() && runtime_canSpin(iter) {
+			iter++
+			runtime_doSpin()
+		} else {
+			runtime.Gosched()
+		}
+	}
 }

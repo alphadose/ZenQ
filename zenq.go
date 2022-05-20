@@ -82,6 +82,9 @@ func New[T any]() *ZenQ[T] {
 
 // Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
+	if atomic.LoadUint32(&self.globalState) == StateClosed {
+		return
+	}
 	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
@@ -130,15 +133,14 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				runtime.Gosched()
 			}
 		case SlotEmpty:
-			if atomic.LoadUint32(&self.globalState) == StateOpen {
-				if parker.Ready() && runtime_canSpin(iter) {
-					iter++
-					runtime_doSpin()
-				} else {
-					runtime.Gosched()
-				}
-			} else {
+			if atomic.LoadUint32(&self.globalState) == StateClosed {
 				return *new(T), false
+			}
+			if parker.Ready() && runtime_canSpin(iter) {
+				iter++
+				runtime_doSpin()
+			} else {
+				runtime.Gosched()
 			}
 		case SlotCommitted:
 			continue
@@ -176,22 +178,16 @@ func (self *ZenQ[T]) Dump() {
 	fmt.Print("\n")
 }
 
-// Drain drains the entire ZenQ and releases all parked goroutines (if any)
-// Make sure to only call this from a single goroutine, or else mark this ZenQ closed to unblock other goroutines
-// Calling drain from multiple goroutines might block a few of them due to race conditions in which case mark this ZenQ closed
-// After this ZenQ is closed, the other blocked goroutines return
-func (self *ZenQ[T]) Drain() {
-	for atomic.LoadUint32(&self.contents[atomic.LoadUint64(&self.readerIndex)].State) == SlotCommitted {
-		self.Read()
-	}
-}
-
 // Reset resets the queue state
 // Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Reset() {
-	atomic.StoreUint64(&self.writerIndex, 0)
-	atomic.StoreUint64(&self.readerIndex, 0)
+	self.Close()
 	for idx := range self.contents {
+		atomic.StoreUint32(&self.contents[idx].State, SlotCommitted)
+		self.contents[idx].Parker.Release()
 		atomic.StoreUint32(&self.contents[idx].State, SlotEmpty)
 	}
+	atomic.StoreUint64(&self.writerIndex, 0)
+	atomic.StoreUint64(&self.readerIndex, 0)
+	atomic.StoreUint32(&self.globalState, StateOpen)
 }
