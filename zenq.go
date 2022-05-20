@@ -33,7 +33,8 @@ const (
 // ZenQ global state enums
 const (
 	StateOpen = iota
-	StateClosed
+	StateClosedForWrites
+	StateClosedForReads
 )
 
 // ZenQ Slot state enums
@@ -41,6 +42,7 @@ const (
 	SlotEmpty = iota
 	SlotBusy
 	SlotCommitted
+	SlotClosed
 )
 
 type (
@@ -82,7 +84,7 @@ func New[T any]() *ZenQ[T] {
 
 // Write writes a value to the queue
 func (self *ZenQ[T]) Write(value T) {
-	if atomic.LoadUint32(&self.globalState) == StateClosed {
+	if atomic.LoadUint32(&self.globalState) > StateOpen {
 		return
 	}
 	// Get writer slot index
@@ -95,9 +97,6 @@ func (self *ZenQ[T]) Write(value T) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
 		parker.Park()
-		if atomic.LoadUint32(&self.globalState) == StateClosed {
-			return
-		}
 	}
 	self.contents[idx].Item = value
 	// commit write into the slot
@@ -136,16 +135,19 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if parker.Ready() && runtime_canSpin(iter) {
 				iter++
 				runtime_doSpin()
-			} else if atomic.LoadUint32(&self.globalState) == StateOpen {
+			} else if atomic.LoadUint32(&self.globalState) != StateClosedForReads {
 				runtime.Gosched()
 			} else {
 				return getDefault[T](), false
 			}
+		case SlotClosed:
+			atomic.StoreUint32(&self.globalState, StateClosedForReads)
+			return getDefault[T](), false
 		case SlotCommitted:
 			continue
 		}
 	}
-	return self.contents[idx].Item, atomic.LoadUint32(&self.globalState) == StateOpen
+	return self.contents[idx].Item, true
 }
 
 // TryRead is used for reading from a single channel by multiple selectors
@@ -163,7 +165,19 @@ func (self *ZenQ[T]) TryRead() (data T, open bool) {
 
 // Close closes the ZenQ for further read/writes
 func (self *ZenQ[T]) Close() {
-	atomic.StoreUint32(&self.globalState, StateClosed)
+	if !atomic.CompareAndSwapUint32(&self.globalState, StateOpen, StateClosedForWrites) {
+		return
+	}
+	// Get writer slot index
+	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
+	slotState := &self.contents[idx].State
+	parker := self.contents[idx].Parker
+
+	// CAS -> change slot_state to busy if slot_state == empty
+	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+		parker.Park()
+	}
+	atomic.StoreUint32(slotState, SlotClosed)
 }
 
 // Check and Poll implement the Selectable interface
@@ -194,13 +208,12 @@ func (self *ZenQ[T]) Dump() {
 // Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Reset() {
 	self.Close()
-	for idx := range self.contents {
-		atomic.StoreUint32(&self.contents[idx].State, SlotCommitted)
-		self.contents[idx].Parker.Release()
-		atomic.StoreUint32(&self.contents[idx].State, SlotEmpty)
+loop:
+	for {
+		if _, open := self.Read(); !open {
+			break loop
+		}
 	}
-	atomic.StoreUint64(&self.writerIndex, 0)
-	atomic.StoreUint64(&self.readerIndex, 0)
 	atomic.StoreUint32(&self.globalState, StateOpen)
 }
 
