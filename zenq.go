@@ -94,10 +94,10 @@ func (self *ZenQ[T]) Write(value T) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
+		parker.Park()
 		if atomic.LoadUint32(&self.globalState) == StateClosed {
 			return
 		}
-		parker.Park()
 	}
 	self.contents[idx].Item = value
 	// commit write into the slot
@@ -133,20 +133,32 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				runtime.Gosched()
 			}
 		case SlotEmpty:
-			if atomic.LoadUint32(&self.globalState) == StateClosed {
-				return *new(T), false
-			}
 			if parker.Ready() && runtime_canSpin(iter) {
 				iter++
 				runtime_doSpin()
-			} else {
+			} else if atomic.LoadUint32(&self.globalState) == StateOpen {
 				runtime.Gosched()
+			} else {
+				return getDefault[T](), false
 			}
 		case SlotCommitted:
 			continue
 		}
 	}
 	return self.contents[idx].Item, atomic.LoadUint32(&self.globalState) == StateOpen
+}
+
+// TryRead is used for reading from a single channel by multiple selectors
+func (self *ZenQ[T]) TryRead() (data T, open bool) {
+	idx := atomic.LoadUint64(&self.readerIndex)
+	if atomic.LoadUint32(&self.contents[idx&indexMask].State) == SlotCommitted &&
+		atomic.CompareAndSwapUint64(&self.readerIndex, idx, idx+1) {
+		idx = idx & indexMask
+		defer consume(&self.contents[idx].State, self.contents[idx].Parker)
+		return self.contents[idx].Item, atomic.LoadUint32(&self.globalState) == StateOpen
+	} else {
+		return getDefault[T](), false
+	}
 }
 
 // Close closes the ZenQ for further read/writes
@@ -190,4 +202,9 @@ func (self *ZenQ[T]) Reset() {
 	atomic.StoreUint64(&self.writerIndex, 0)
 	atomic.StoreUint64(&self.readerIndex, 0)
 	atomic.StoreUint32(&self.globalState, StateOpen)
+}
+
+// returns a default value of any type
+func getDefault[T any]() T {
+	return *new(T)
 }

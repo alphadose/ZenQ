@@ -17,9 +17,9 @@ type custom2 struct {
 }
 
 const (
-	channelBufferSize = 1 << 12
-	throughput        = 600000000 // 6 * 10^8
-	numProducers      = 4
+	channelBufferSize     = 1 << 12
+	throughput        int = 6e5 // 6 * 10^5
+	numProducers          = 4
 )
 
 var (
