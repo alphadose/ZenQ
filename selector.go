@@ -2,11 +2,11 @@ package zenq
 
 import "runtime"
 
-const uintMaxSize uint64 = 1<<64 - 1
+const uintMaxSize uint32 = 1<<32 - 1
 
 // Selectable is an an interface for getting selected among many others
 type Selectable interface {
-	Check() (uint64, bool)
+	Check() (uint32, bool)
 	Poll() any
 }
 

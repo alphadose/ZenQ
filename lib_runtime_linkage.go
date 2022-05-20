@@ -108,6 +108,9 @@ func mcall(fn func(unsafe.Pointer))
 //go:linkname park_m runtime.park_m
 func park_m(gp unsafe.Pointer)
 
+//go:linkname fastrandn runtime.fastrandn
+func fastrandn(n uint32) uint32
+
 type waitReason uint8
 
 const (
