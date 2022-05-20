@@ -142,6 +142,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			}
 		case SlotClosed:
 			atomic.StoreUint32(&self.globalState, StateClosedForReads)
+			atomic.StoreUint32(slotState, SlotEmpty)
 			return getDefault[T](), false
 		case SlotCommitted:
 			continue
@@ -163,7 +164,8 @@ func (self *ZenQ[T]) TryRead() (data T, open bool) {
 	}
 }
 
-// Close closes the ZenQ for further read/writes
+// Close closes the ZenQ for further writes
+// You can only read uptill the last committed write after closing
 func (self *ZenQ[T]) Close() {
 	if !atomic.CompareAndSwapUint32(&self.globalState, StateOpen, StateClosedForWrites) {
 		return
@@ -206,6 +208,7 @@ func (self *ZenQ[T]) Dump() {
 
 // Reset resets the queue state
 // Unsafe to be called from multiple goroutines
+// This also releases all parked goroutines if any
 func (self *ZenQ[T]) Reset() {
 	self.Close()
 loop:
