@@ -87,8 +87,12 @@ func zenqProducer() {
 
 func zenqConsumer() {
 	for i := uint64(0); i < currSize; i++ {
-		data, _ := zq.Read()
-		validatePayload(data)
+		if data, ok := zq.Read(); ok {
+			validatePayload(data)
+		} else {
+			panic("ZenQ is closed")
+		}
+
 	}
 }
 

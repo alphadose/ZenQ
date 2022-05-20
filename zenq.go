@@ -154,19 +154,6 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 	return self.contents[idx].Item, true
 }
 
-// TryRead is used for reading from a single channel by multiple selectors
-func (self *ZenQ[T]) TryRead() (data T, open bool) {
-	idx := atomic.LoadUint64(&self.readerIndex)
-	if atomic.LoadUint32(&self.contents[idx&indexMask].State) == SlotCommitted &&
-		atomic.CompareAndSwapUint64(&self.readerIndex, idx, idx+1) {
-		idx = idx & indexMask
-		defer consume(&self.contents[idx].State, self.contents[idx].Parker)
-		return self.contents[idx].Item, atomic.LoadUint32(&self.globalState) == StateOpen
-	} else {
-		return getDefault[T](), false
-	}
-}
-
 // Close closes the ZenQ for further writes
 // You can only read uptill the last committed write after closing
 func (self *ZenQ[T]) Close() {
@@ -183,6 +170,19 @@ func (self *ZenQ[T]) Close() {
 		parker.Park()
 	}
 	atomic.StoreUint32(slotState, SlotClosed)
+}
+
+// TryRead is used for reading from a single channel by multiple selectors
+func (self *ZenQ[T]) TryRead() (data T, open bool) {
+	idx := atomic.LoadUint64(&self.readerIndex)
+	if atomic.LoadUint32(&self.contents[idx&indexMask].State) == SlotCommitted &&
+		atomic.CompareAndSwapUint64(&self.readerIndex, idx, idx+1) {
+		idx = idx & indexMask
+		defer consume(&self.contents[idx].State, self.contents[idx].Parker)
+		return self.contents[idx].Item, atomic.LoadUint32(&self.globalState) == StateOpen
+	} else {
+		return getDefault[T](), false
+	}
 }
 
 // Check and Poll implement the Selectable interface
@@ -210,17 +210,16 @@ func (self *ZenQ[T]) Dump() {
 }
 
 // Reset resets the queue state
-// Unsafe to be called from multiple goroutines
 // This also releases all parked goroutines if any
 func (self *ZenQ[T]) Reset() {
-	self.Close()
-loop:
+	go self.Close()
+drain:
 	for {
 		if _, open := self.Read(); !open {
-			break loop
+			break drain
 		}
 	}
-	atomic.StoreUint32(&self.globalState, StateOpen)
+	atomic.CompareAndSwapUint32(&self.globalState, StateClosedForReads, StateOpen)
 }
 
 // returns a default value of any type
