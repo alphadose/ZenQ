@@ -8,8 +8,8 @@
 
 // Suggestions:-
 //
-// 1. If you have enough cores you can change from runtime.Gosched() to a busy loop
-// 2. Use runtime.LockOSThread() on the goroutine calling ZenQ.Read() for best performance provided you have > 1 cpu cores
+// 1. Use runtime.LockOSThread() on the goroutine calling ZenQ.Read() for best performance provided you have > 1 cpu cores
+// 2. Use large queue sizes (>= 2^14) in SPSC mode for best gains
 //
 
 package zenq
@@ -135,7 +135,6 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	selectParker := self.contents[idx].SelectParker
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
@@ -168,7 +167,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
 				// Queue closed, released all parked select_readers
-				selectParker.Release()
+				self.contents[idx].SelectParker.Release()
 			}
 			return getDefault[T](), false
 		case SlotCommitted:
@@ -218,6 +217,9 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 	if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 		return
 	}
+
+	sel.IncrementReferenceCount()
+	defer sel.DecrementReferenceCount()
 
 	// Get reader index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
