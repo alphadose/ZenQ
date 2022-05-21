@@ -24,15 +24,26 @@ func zenqParkCommit(gp, threadParkingLocation unsafe.Pointer) bool {
 	return true
 }
 
-// Park parks the current calling goroutine
+// park parks the current calling goroutine
 // This keeps only one parked goroutine in state at all times
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
-func (tp *ThreadParker) Park() {
+func park(tp *ThreadParker, lifo bool) {
 	atomic.AddInt64(&tp.waiters, 1)
-	runtime_SemacquireMutex(&tp.sema, false, 1)
+	runtime_SemacquireMutex(&tp.sema, lifo, 1)
 	gopark(zenqParkCommit, unsafe.Pointer(&tp.parkedThread), waitReasonSleep, traceEvGoBlock, 1)
 	runtime_Semrelease(&tp.sema, atomic.AddInt64(&tp.waiters, -1) > 0, 1)
+}
+
+// ParkBack puts the calling goroutine at the end of wait queue
+func (tp *ThreadParker) ParkBack() {
+	park(tp, false)
+}
+
+// ParkFront puts the calling goroutine at the front of wait queue
+// should be used for high priority goroutines
+func (tp *ThreadParker) ParkFront() {
+	park(tp, true)
 }
 
 // Ready calls a single parked goroutine if any and moves other goroutines up the queue

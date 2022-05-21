@@ -99,7 +99,7 @@ func (self *ZenQ[T]) Write(value T) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		parker.Park()
+		parker.ParkBack()
 	}
 	self.contents[idx].Item = value
 	// commit write into the slot
@@ -172,7 +172,7 @@ func (self *ZenQ[T]) Close() {
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		parker.Park()
+		parker.ParkBack()
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
