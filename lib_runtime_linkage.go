@@ -1,6 +1,7 @@
 package zenq
 
 import (
+	"runtime"
 	"unsafe"
 	_ "unsafe"
 )
@@ -138,6 +139,18 @@ func fast_park(gp unsafe.Pointer) {
 	dropg()
 	casgstatus(gp, _Grunning, _Gwaiting)
 	schedule()
+}
+
+func wait_until_parked(gp unsafe.Pointer) {
+	iter := 0
+	for Readgstatus(gp) != _Gwaiting {
+		if runtime_canSpin(iter) {
+			iter++
+			runtime_doSpin()
+		} else {
+			runtime.Gosched()
+		}
+	}
 }
 
 type waitReason uint8

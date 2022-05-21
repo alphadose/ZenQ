@@ -214,12 +214,12 @@ func (self *ZenQ[T]) CloseAsync() {
 // Contest for reads in a less aggressive manner to save resources
 // There wont be any context switching between selection reader goroutines, they will be signalled via selectParker
 func (self *ZenQ[T]) SelectRead(sel *Selection) {
+	// return object to memory pool after all selectable goroutines have returned
+	defer sel.DecrementReferenceCount()
+
 	if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 		return
 	}
-
-	sel.IncrementReferenceCount()
-	defer sel.DecrementReferenceCount()
 
 	// Get reader index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
@@ -250,7 +250,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 			continue
 		}
 		// Drop slot contention if the main selector thread no longer exists or if queue is closed
-		if atomic.LoadUint32(&sel.Lock) == 1 || atomic.LoadUint32(&self.globalState) == StateFullyClosed {
+		if sel.Selected() || atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 			return
 		}
 	}
@@ -259,13 +259,8 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 
 	defer atomic.StoreUint32(slotState, SlotEmpty)
 
-	if atomic.CompareAndSwapUint32(&sel.Lock, 0, 1) {
-		sel.Data = data
-		for Readgstatus(sel.ThreadPtr) != _Gwaiting {
-			// runtime_doSpin()
-			runtime.Gosched()
-		}
-		goready(sel.ThreadPtr, 1)
+	if sel.AcquireLock() {
+		sel.WriteAndSchedule(data)
 	} else {
 		go self.WriteWithHighPriority(data)
 	}
