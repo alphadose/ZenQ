@@ -52,11 +52,11 @@ type (
 	// Most modern CPUs have cache line size of 64 bytes
 	cacheLinePadding [8]uint64
 
-	// Slot represents a single slot in ZenQ each one having its own state
 	Slot[T any] struct {
-		State  uint32
-		Parker *ThreadParker
-		Item   T
+		State        uint32
+		WriteParker  *ThreadParker
+		SelectParker *ThreadParker
+		Item         T
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -80,7 +80,7 @@ type (
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
 	for idx := range contents {
-		contents[idx].Parker = NewThreadParker()
+		contents[idx].WriteParker, contents[idx].SelectParker = NewThreadParker(), NewThreadParker()
 	}
 	return &ZenQ[T]{contents: contents}
 }
@@ -90,38 +90,58 @@ func (self *ZenQ[T]) Write(value T) {
 	if atomic.LoadUint32(&self.globalState) > StateOpen {
 		return
 	}
-	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	parker := self.contents[idx].Parker
+	writeParker := self.contents[idx].WriteParker
+	selectParker := self.contents[idx].SelectParker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		parker.ParkBack()
+		writeParker.ParkBack()
 	}
 	self.contents[idx].Item = value
-	// commit write into the slot
 	atomic.StoreUint32(slotState, SlotCommitted)
+	// Ready blocking selector if any
+	selectParker.Ready()
 }
 
-// consume consumes a slot and marks it ready for writing
-func consume(slotState *uint32, parker *ThreadParker) {
+// WriteWithHighPriority is the same as write except for the fact that the element written is not necessarily at
+// the end of the queue, it might be a lot more closer to the read pointer depending on the queue state
+// Useful in cases where we might want a certain element to skip all waiters in the queue
+func (self *ZenQ[T]) WriteWithHighPriority(value T) {
+	if atomic.LoadUint32(&self.globalState) > StateOpen {
+		return
+	}
+	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
+	slotState := &self.contents[idx].State
+	writeParker := self.contents[idx].WriteParker
+	selectParker := self.contents[idx].SelectParker
+
+	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+		// Park at the front of the wait queue guaranteeing high priority
+		writeParker.ParkFront()
+	}
+	self.contents[idx].Item = value
+	atomic.StoreUint32(slotState, SlotCommitted)
+	selectParker.Ready()
+}
+
+func consume(slotState *uint32, writeParker *ThreadParker) {
 	atomic.StoreUint32(slotState, SlotEmpty)
-	parker.Ready()
+	writeParker.Ready()
 }
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, open bool) {
-	// Get reader slot index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	parker := self.contents[idx].Parker
+	writeParker := self.contents[idx].WriteParker
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
-	defer consume(slotState, parker)
+	defer consume(slotState, writeParker)
 
 	iter := 0
 	// CAS -> change slot_state to busy if slot_state == committed
@@ -135,7 +155,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				runtime.Gosched()
 			}
 		case SlotEmpty:
-			if parker.Ready() && runtime_canSpin(iter) {
+			if writeParker.Ready() && runtime_canSpin(iter) {
 				iter++
 				runtime_doSpin()
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
@@ -165,44 +185,75 @@ func (self *ZenQ[T]) Close() {
 	if !atomic.CompareAndSwapUint32(&self.globalState, StateOpen, StateClosedForWrites) {
 		return
 	}
-	// Get writer slot index
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	parker := self.contents[idx].Parker
+	writeParker := self.contents[idx].WriteParker
+	selectParker := self.contents[idx].SelectParker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		parker.ParkBack()
+		writeParker.ParkBack()
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
+	selectParker.Ready()
 }
 
-// TryRead is used for reading from a single channel by multiple selectors
-func (self *ZenQ[T]) TryRead() (data T, open bool) {
-	idx := atomic.LoadUint64(&self.readerIndex)
-	if atomic.LoadUint32(&self.contents[idx&indexMask].State) == SlotCommitted &&
-		atomic.CompareAndSwapUint64(&self.readerIndex, idx, idx+1) {
-		idx = idx & indexMask
-		defer consume(&self.contents[idx].State, self.contents[idx].Parker)
-		return self.contents[idx].Item, atomic.LoadUint32(&self.globalState) == StateOpen
-	} else {
-		return getDefault[T](), false
+// Implementation of Selectable interface
+
+// SelectRead is used for read selection among multiple ZenQs
+// Contest for reads in a less aggressive manner to save resources
+// There wont be any context switching between selection reader goroutines, they will be signalled via selectParker
+func (self *ZenQ[T]) SelectRead(sel *Selection) {
+	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
+	slotState := &self.contents[idx].State
+	writeParker := self.contents[idx].WriteParker
+	selectParker := self.contents[idx].SelectParker
+
+	iter := 0
+	// CAS -> change slot_state to busy if slot_state == committed
+	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
+		switch atomic.LoadUint32(slotState) {
+		case SlotBusy:
+			runtime.Gosched()
+		case SlotEmpty:
+			if writeParker.Ready() && runtime_canSpin(iter) {
+				iter++
+				runtime_doSpin()
+			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
+				selectParker.ParkBack()
+			} else {
+				return
+			}
+		case SlotClosed:
+			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
+				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
+			}
+			return
+		case SlotCommitted:
+			continue
+		}
+		// Drop contention if the main selector thread no longer exists
+		if atomic.LoadPointer(sel.ThreadPtr) == nil {
+			return
+		}
 	}
-}
+	defer consume(slotState, writeParker)
 
-// Check and Poll implement the Selectable interface
+	data := self.contents[idx].Item
 
-// Check returns the number of reads committed to the queue and whether the queue is ready for reading or not
-func (self *ZenQ[T]) Check() (uint32, bool) {
-	idx := atomic.LoadUint64(&self.readerIndex) & indexMask
-	return atomic.LoadUint32(&self.globalState), atomic.LoadUint32(&self.contents[idx].State) == SlotCommitted
-}
-
-// Poll polls
-func (self *ZenQ[T]) Poll() (any, any) {
-	atomic.AddUint32(&self.globalState, 1)
-	return self.Read()
+	if gp := atomic.SwapPointer(sel.ThreadPtr, nil); gp != nil {
+		// store value here, callback pointer or function
+		sel.Data = data
+		for Readgstatus(gp) != _Gwaiting {
+			runtime.Gosched()
+		}
+		goready(gp, 1)
+	} else {
+		// This ZenQ was not selected among others, write the data back into the queue with high priority
+		// This function call is made non-blocking to ensure there are no deadlocks
+		go self.WriteWithHighPriority(data)
+	}
 }
 
 // Reset resets the queue state

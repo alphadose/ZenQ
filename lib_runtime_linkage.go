@@ -38,7 +38,7 @@ func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
 
 // func getg() any
 
-// func GetG() unsafe.Pointer
+func GetG() unsafe.Pointer
 
 //go:linkname Fastrand runtime.fastrand
 func Fastrand() uint32
@@ -113,6 +113,33 @@ func fastrandn(n uint32) uint32
 
 //go:linkname throw runtime.throw
 func throw(s string)
+
+//go:linkname Readgstatus runtime.readgstatus
+func Readgstatus(gp unsafe.Pointer) uint32
+
+//go:linkname casgstatus runtime.casgstatus
+func casgstatus(gp unsafe.Pointer, oldval, newval uint32)
+
+//go:linkname dropg runtime.dropg
+func dropg()
+
+//go:linkname schedule runtime.schedule
+func schedule()
+
+//go:linkname mallocgc runtime.mallocgc
+func mallocgc(size uintptr, typ unsafe.Pointer, needzero bool) unsafe.Pointer
+
+//go:linkname sysFree runtime.sysFree
+func sysFree(v unsafe.Pointer, n uintptr, sysStat unsafe.Pointer)
+
+//go:linkname sysFreeOS runtime.sysFreeOS
+func sysFreeOS(v unsafe.Pointer, n uintptr)
+
+func fast_park(gp unsafe.Pointer) {
+	dropg()
+	casgstatus(gp, _Grunning, _Gwaiting)
+	schedule()
+}
 
 type waitReason uint8
 
@@ -201,6 +228,99 @@ const (
 	// Byte is used but only 6 bits are available for event type.
 	// The remaining 2 bits are used to specify the number of arguments.
 	// That means, the max event type value is 63.
+)
+
+// defined constants
+const (
+	// G status
+	//
+	// Beyond indicating the general state of a G, the G status
+	// acts like a lock on the goroutine's stack (and hence its
+	// ability to execute user code).
+	//
+	// If you add to this list, add to the list
+	// of "okay during garbage collection" status
+	// in mgcmark.go too.
+	//
+	// TODO(austin): The _Gscan bit could be much lighter-weight.
+	// For example, we could choose not to run _Gscanrunnable
+	// goroutines found in the run queue, rather than CAS-looping
+	// until they become _Grunnable. And transitions like
+	// _Gscanwaiting -> _Gscanrunnable are actually okay because
+	// they don't affect stack ownership.
+
+	// _Gidle means this goroutine was just allocated and has not
+	// yet been initialized.
+	_Gidle = iota // 0
+
+	// _Grunnable means this goroutine is on a run queue. It is
+	// not currently executing user code. The stack is not owned.
+	_Grunnable // 1
+
+	// _Grunning means this goroutine may execute user code. The
+	// stack is owned by this goroutine. It is not on a run queue.
+	// It is assigned an M and a P (g.m and g.m.p are valid).
+	_Grunning // 2
+
+	// _Gsyscall means this goroutine is executing a system call.
+	// It is not executing user code. The stack is owned by this
+	// goroutine. It is not on a run queue. It is assigned an M.
+	_Gsyscall // 3
+
+	// _Gwaiting means this goroutine is blocked in the runtime.
+	// It is not executing user code. It is not on a run queue,
+	// but should be recorded somewhere (e.g., a channel wait
+	// queue) so it can be ready()d when necessary. The stack is
+	// not owned *except* that a channel operation may read or
+	// write parts of the stack under the appropriate channel
+	// lock. Otherwise, it is not safe to access the stack after a
+	// goroutine enters _Gwaiting (e.g., it may get moved).
+	_Gwaiting // 4
+
+	// _Gmoribund_unused is currently unused, but hardcoded in gdb
+	// scripts.
+	_Gmoribund_unused // 5
+
+	// _Gdead means this goroutine is currently unused. It may be
+	// just exited, on a free list, or just being initialized. It
+	// is not executing user code. It may or may not have a stack
+	// allocated. The G and its stack (if any) are owned by the M
+	// that is exiting the G or that obtained the G from the free
+	// list.
+	_Gdead // 6
+
+	// _Genqueue_unused is currently unused.
+	_Genqueue_unused // 7
+
+	// _Gcopystack means this goroutine's stack is being moved. It
+	// is not executing user code and is not on a run queue. The
+	// stack is owned by the goroutine that put it in _Gcopystack.
+	_Gcopystack // 8
+
+	// _Gpreempted means this goroutine stopped itself for a
+	// suspendG preemption. It is like _Gwaiting, but nothing is
+	// yet responsible for ready()ing it. Some suspendG must CAS
+	// the status to _Gwaiting to take responsibility for
+	// ready()ing this G.
+	_Gpreempted // 9
+
+	// _Gscan combined with one of the above states other than
+	// _Grunning indicates that GC is scanning the stack. The
+	// goroutine is not executing user code and the stack is owned
+	// by the goroutine that set the _Gscan bit.
+	//
+	// _Gscanrunning is different: it is used to briefly block
+	// state transitions while GC signals the G to scan its own
+	// stack. This is otherwise like _Grunning.
+	//
+	// atomicstatus&~Gscan gives the state the goroutine will
+	// return to when the scan completes.
+	_Gscan          = 0x1000
+	_Gscanrunnable  = _Gscan + _Grunnable  // 0x1001
+	_Gscanrunning   = _Gscan + _Grunning   // 0x1002
+	_Gscansyscall   = _Gscan + _Gsyscall   // 0x1003
+	_Gscanwaiting   = _Gscan + _Gwaiting   // 0x1004
+	_Gscanpreempted = _Gscan + _Gpreempted // 0x1009
 )
 
 // Comparison before and after linking with this
