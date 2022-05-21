@@ -99,7 +99,11 @@ func (self *ZenQ[T]) Write(value T) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		writeParker.ParkBack()
+		if selectParker.Ready() {
+			runtime.Gosched()
+		} else {
+			writeParker.ParkBack()
+		}
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
@@ -120,8 +124,12 @@ func (self *ZenQ[T]) WriteWithHighPriority(value T) {
 	selectParker := self.contents[idx].SelectParker
 
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		// Park at the front of the wait queue guaranteeing high priority
-		writeParker.ParkFront()
+		if selectParker.Ready() {
+			runtime.Gosched()
+		} else {
+			// Park at the front of the wait queue guaranteeing high priority
+			writeParker.ParkFront()
+		}
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
@@ -138,12 +146,14 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
+	selectParker := self.contents[idx].SelectParker
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
 	defer consume(slotState, writeParker)
 
 	iter := 0
+	shouldSpin := false
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
@@ -155,7 +165,8 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				runtime.Gosched()
 			}
 		case SlotEmpty:
-			if writeParker.Ready() && runtime_canSpin(iter) {
+			shouldSpin = shouldSpin || writeParker.Ready()
+			if shouldSpin && runtime_canSpin(iter) {
 				iter++
 				runtime_doSpin()
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
@@ -166,6 +177,8 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
+				// Queue closed, released all parked select_readers
+				selectParker.Release()
 			}
 			return getDefault[T](), false
 		case SlotCommitted:
@@ -192,7 +205,11 @@ func (self *ZenQ[T]) Close() {
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		writeParker.ParkBack()
+		if selectParker.Ready() {
+			runtime.Gosched()
+		} else {
+			writeParker.ParkBack()
+		}
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
@@ -210,37 +227,34 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 	writeParker := self.contents[idx].WriteParker
 	selectParker := self.contents[idx].SelectParker
 
-	iter := 0
-	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
 			runtime.Gosched()
 		case SlotEmpty:
-			if writeParker.Ready() && runtime_canSpin(iter) {
-				iter++
-				runtime_doSpin()
-			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
-				selectParker.ParkBack()
+			if writeParker.Ready() {
+				runtime.Gosched()
 			} else {
-				return
+				selectParker.ParkBack()
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
+				selectParker.Release()
 			}
 			return
 		case SlotCommitted:
 			continue
 		}
-		// Drop contention if the main selector thread no longer exists
-		if atomic.LoadPointer(sel.ThreadPtr) == nil {
+		// Drop slot contention if the main selector thread no longer exists or if queue is closed
+		if atomic.LoadPointer(sel.ThreadPtr) == nil || atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 			return
 		}
 	}
-	defer consume(slotState, writeParker)
 
 	data := self.contents[idx].Item
+
+	defer consume(slotState, writeParker)
 
 	if gp := atomic.SwapPointer(sel.ThreadPtr, nil); gp != nil {
 		// store value here, callback pointer or function
@@ -250,8 +264,6 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 		}
 		goready(gp, 1)
 	} else {
-		// This ZenQ was not selected among others, write the data back into the queue with high priority
-		// This function call is made non-blocking to ensure there are no deadlocks
 		go self.WriteWithHighPriority(data)
 	}
 }

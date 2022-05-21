@@ -18,16 +18,18 @@ type Selectable interface {
 }
 
 // Select selects a single element out of multiple ZenQs
-func Select(streams ...Selectable) any {
+// the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
+func Select(streams ...Selectable) (data any, ok bool) {
 	sel := selectionPool.Get().(*Selection)
 	defer selectionPool.Put(sel)
 	g := GetG()
 	sel.ThreadPtr = &g
+	sel.Data = nil
 	// race for reads
 	for _, stream := range streams {
 		go stream.SelectRead(sel)
 	}
-	// wait for notification
+	// park and wait for notification
 	mcall(fast_park)
-	return sel.Data
+	return sel.Data, sel.Data != nil
 }

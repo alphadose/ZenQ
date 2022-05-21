@@ -47,17 +47,18 @@ func zenqSelector() {
 	for i := 0; i < throughput; i++ {
 
 		// Selection occurs here
-		switch zenq.Select(zq1, zq2, zq3, zq4).(type) {
-		case int:
-			intCtr++
-		case string:
-			strCtr++
-		case custom1:
-			cs1Ctr++
-		case *custom2:
-			cs2Ctr++
+		if data, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
+			switch data.(type) {
+			case int:
+				intCtr++
+			case string:
+				strCtr++
+			case custom1:
+				cs1Ctr++
+			case *custom2:
+				cs2Ctr++
+			}
 		}
-
 	}
 	if intCtr != validCount || strCtr != validCount || cs1Ctr != validCount || cs2Ctr != validCount {
 		panic("Data Loss")

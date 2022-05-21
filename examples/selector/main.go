@@ -31,15 +31,17 @@ func main() {
 	for i := 0; i < 40; i++ {
 
 		// Selection occurs here
-		switch data := zenq.Select(zq1, zq2, zq3, zq4).(type) {
-		case int:
-			fmt.Printf("Received int %d\n", data)
-		case string:
-			fmt.Printf("Received string %s\n", data)
-		case custom1:
-			fmt.Printf("Received custom data type number 1 %#v\n", data)
-		case *custom2:
-			fmt.Printf("Received pointer %#v\n", data)
+		if data, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
+			switch data.(type) {
+			case int:
+				fmt.Printf("Received int %d\n", data)
+			case string:
+				fmt.Printf("Received string %s\n", data)
+			case custom1:
+				fmt.Printf("Received custom data type number 1 %#v\n", data)
+			case *custom2:
+				fmt.Printf("Received pointer %#v\n", data)
+			}
 		}
 	}
 }
