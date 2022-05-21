@@ -111,6 +111,9 @@ func park_m(gp unsafe.Pointer)
 //go:linkname fastrandn runtime.fastrandn
 func fastrandn(n uint32) uint32
 
+//go:linkname throw runtime.throw
+func throw(s string)
+
 type waitReason uint8
 
 const (

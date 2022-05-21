@@ -32,9 +32,12 @@ const (
 
 // ZenQ global state enums
 const (
+	// Both reads and writes are possible
 	StateOpen = iota
+	// No further writes can be performed and you can only read upto the last committed write in this state
 	StateClosedForWrites
-	StateClosedForReads
+	// Neither reads nor writes are possible, queue is fully exhausted
+	StateFullyClosed
 )
 
 // ZenQ Slot state enums
@@ -135,14 +138,14 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if parker.Ready() && runtime_canSpin(iter) {
 				iter++
 				runtime_doSpin()
-			} else if atomic.LoadUint32(&self.globalState) != StateClosedForReads {
+			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				runtime.Gosched()
 			} else {
 				return getDefault[T](), false
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
-				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateClosedForReads)
+				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
 			}
 			return getDefault[T](), false
 		case SlotCommitted:
@@ -213,7 +216,7 @@ drain:
 			break drain
 		}
 	}
-	atomic.CompareAndSwapUint32(&self.globalState, StateClosedForReads, StateOpen)
+	atomic.CompareAndSwapUint32(&self.globalState, StateFullyClosed, StateOpen)
 }
 
 // Dump dumps the current queue state
