@@ -99,11 +99,8 @@ func (self *ZenQ[T]) Write(value T) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		if selectParker.Ready() {
-			runtime.Gosched()
-		} else {
-			writeParker.ParkBack()
-		}
+		selectParker.Ready()
+		writeParker.ParkBack()
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
@@ -124,12 +121,9 @@ func (self *ZenQ[T]) WriteWithHighPriority(value T) {
 	selectParker := self.contents[idx].SelectParker
 
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		if selectParker.Ready() {
-			runtime.Gosched()
-		} else {
-			// Park at the front of the wait queue guaranteeing high priority
-			writeParker.ParkFront()
-		}
+		selectParker.Ready()
+		// Park at the front of the wait queue guaranteeing high priority
+		writeParker.ParkFront()
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
@@ -205,15 +199,18 @@ func (self *ZenQ[T]) Close() {
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		if selectParker.Ready() {
-			runtime.Gosched()
-		} else {
-			writeParker.ParkBack()
-		}
+		selectParker.Ready()
+		writeParker.ParkBack()
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
 	selectParker.Ready()
+}
+
+// CloseAsync closes the channel asynchronously
+// Useful when an user wants to close the channel from a reader end without blocking the thread
+func (self *ZenQ[T]) CloseAsync() {
+	go self.Close()
 }
 
 // Implementation of Selectable interface
@@ -222,6 +219,11 @@ func (self *ZenQ[T]) Close() {
 // Contest for reads in a less aggressive manner to save resources
 // There wont be any context switching between selection reader goroutines, they will be signalled via selectParker
 func (self *ZenQ[T]) SelectRead(sel *Selection) {
+	if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
+		return
+	}
+
+	// Get reader index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
@@ -247,7 +249,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 			continue
 		}
 		// Drop slot contention if the main selector thread no longer exists or if queue is closed
-		if atomic.LoadPointer(sel.ThreadPtr) == nil || atomic.LoadUint32(&self.globalState) == StateFullyClosed {
+		if atomic.LoadUint32(&sel.Lock) == 1 || atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 			return
 		}
 	}
@@ -256,13 +258,12 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 
 	defer consume(slotState, writeParker)
 
-	if gp := atomic.SwapPointer(sel.ThreadPtr, nil); gp != nil {
-		// store value here, callback pointer or function
+	if atomic.CompareAndSwapUint32(&sel.Lock, 0, 1) {
 		sel.Data = data
-		for Readgstatus(gp) != _Gwaiting {
+		for Readgstatus(sel.ThreadPtr) != _Gwaiting {
 			runtime.Gosched()
 		}
-		goready(gp, 1)
+		goready(sel.ThreadPtr, 1)
 	} else {
 		go self.WriteWithHighPriority(data)
 	}
@@ -272,7 +273,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 // This also releases all parked goroutines if any and drains all committed writes
 func (self *ZenQ[T]) Reset() {
 	// Close() is blocking when queue is full hence execute it asynchronously
-	go self.Close()
+	self.CloseAsync()
 drain:
 	for {
 		if _, open := self.Read(); !open {

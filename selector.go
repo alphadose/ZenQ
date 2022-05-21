@@ -2,11 +2,13 @@ package zenq
 
 import (
 	"sync"
+	"sync/atomic"
 	"unsafe"
 )
 
 type Selection struct {
-	ThreadPtr *unsafe.Pointer
+	Lock      uint32
+	ThreadPtr unsafe.Pointer
 	Data      any
 }
 
@@ -19,17 +21,16 @@ type Selectable interface {
 
 // Select selects a single element out of multiple ZenQs
 // the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
+// If no ZenQ acquires this selector's lock then all selectable ZenQs are closed
 func Select(streams ...Selectable) (data any, ok bool) {
 	sel := selectionPool.Get().(*Selection)
-	defer selectionPool.Put(sel)
-	g := GetG()
-	sel.ThreadPtr = &g
-	sel.Data = nil
+	// defer selectionPool.Put(sel)
+	sel.ThreadPtr, sel.Data, sel.Lock = GetG(), nil, 0
 	// race for reads
 	for _, stream := range streams {
 		go stream.SelectRead(sel)
 	}
 	// park and wait for notification
 	mcall(fast_park)
-	return sel.Data, sel.Data != nil
+	return sel.Data, atomic.LoadUint32(&sel.Lock) == 1
 }

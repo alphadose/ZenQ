@@ -36,8 +36,7 @@ func unlock(l *mutex)
 //go:linkname goparkunlock runtime.goparkunlock
 func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
 
-// func getg() any
-
+// GetG returns the pointer to the current goroutine
 func GetG() unsafe.Pointer
 
 //go:linkname Fastrand runtime.fastrand
