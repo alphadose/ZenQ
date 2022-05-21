@@ -130,11 +130,6 @@ func (self *ZenQ[T]) WriteWithHighPriority(value T) {
 	selectParker.Ready()
 }
 
-func consume(slotState *uint32, writeParker *ThreadParker) {
-	atomic.StoreUint32(slotState, SlotEmpty)
-	writeParker.Ready()
-}
-
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, open bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
@@ -144,7 +139,8 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
-	defer consume(slotState, writeParker)
+	// defer consume(slotState, writeParker)
+	defer atomic.StoreUint32(slotState, SlotEmpty)
 
 	iter := 0
 	shouldSpin := false
@@ -234,11 +230,14 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 		case SlotBusy:
 			runtime.Gosched()
 		case SlotEmpty:
-			if writeParker.Ready() {
-				runtime.Gosched()
-			} else {
-				selectParker.ParkBack()
-			}
+			writeParker.Ready()
+			runtime.Gosched()
+			// if writeParker.Ready() {
+			// 	runtime.Gosched()
+			// } else {
+			// 	// selectParker.ParkBack()
+			// 	runtime_doSpin()
+			// }
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
@@ -256,11 +255,12 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 
 	data := self.contents[idx].Item
 
-	defer consume(slotState, writeParker)
+	defer atomic.StoreUint32(slotState, SlotEmpty)
 
 	if atomic.CompareAndSwapUint32(&sel.Lock, 0, 1) {
 		sel.Data = data
 		for Readgstatus(sel.ThreadPtr) != _Gwaiting {
+			// runtime_doSpin()
 			runtime.Gosched()
 		}
 		goready(sel.ThreadPtr, 1)
