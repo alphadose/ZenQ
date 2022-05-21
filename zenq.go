@@ -141,11 +141,9 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				return getDefault[T](), false
 			}
 		case SlotClosed:
-			if !atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
-				runtime.Gosched()
-				continue
+			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
+				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateClosedForReads)
 			}
-			atomic.StoreUint32(&self.globalState, StateClosedForReads)
 			return getDefault[T](), false
 		case SlotCommitted:
 			continue
@@ -156,7 +154,11 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 
 // Close closes the ZenQ for further writes
 // You can only read uptill the last committed write after closing
+// This function will be blocking in case the queue is full
+// ZenQ is closed from a writer goroutine by design, hence it should always be called
+// from a writer goroutine and never from a reader goroutine which might cause the reader to get blocked and hence deadlock
 func (self *ZenQ[T]) Close() {
+	// This ensures a ZenQ is closed only once even if this function is called multiple times making this operation safe
 	if !atomic.CompareAndSwapUint32(&self.globalState, StateOpen, StateClosedForWrites) {
 		return
 	}
@@ -169,6 +171,7 @@ func (self *ZenQ[T]) Close() {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		parker.Park()
 	}
+	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
 }
 
@@ -199,19 +202,10 @@ func (self *ZenQ[T]) Poll() (any, any) {
 	return self.Read()
 }
 
-// Dump dumps the current queue state
-// Unsafe to be called from multiple goroutines
-func (self *ZenQ[T]) Dump() {
-	fmt.Printf("writerIndex: %3d, readerIndex: %3d, content:", self.writerIndex, self.readerIndex)
-	for index := range self.contents {
-		fmt.Printf("%5v : State -> %5v, Item -> %5v", index, self.contents[index].State, self.contents[index].Item)
-	}
-	fmt.Print("\n")
-}
-
 // Reset resets the queue state
-// This also releases all parked goroutines if any
+// This also releases all parked goroutines if any and drains all committed writes
 func (self *ZenQ[T]) Reset() {
+	// Close() is blocking when queue is full hence execute it asynchronously
 	go self.Close()
 drain:
 	for {
@@ -220,6 +214,16 @@ drain:
 		}
 	}
 	atomic.CompareAndSwapUint32(&self.globalState, StateClosedForReads, StateOpen)
+}
+
+// Dump dumps the current queue state
+// Unsafe to be called from multiple goroutines
+func (self *ZenQ[T]) Dump() {
+	fmt.Printf("writerIndex: %3d, readerIndex: %3d, content:", self.writerIndex, self.readerIndex)
+	for index := range self.contents {
+		fmt.Printf("%5v : State -> %5v, Item -> %5v", index, self.contents[index].State, self.contents[index].Item)
+	}
+	fmt.Print("\n")
 }
 
 // returns a default value of any type
