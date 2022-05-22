@@ -1,7 +1,6 @@
 package zenq
 
 import (
-	"runtime"
 	"sync/atomic"
 	"unsafe"
 )
@@ -62,13 +61,7 @@ func (tp *ThreadParker) Ready() (readied bool) {
 
 // Release releases all parked goroutines
 func (tp *ThreadParker) Release() {
-	iter := 0
 	for atomic.LoadInt64(&tp.waiters) > 0 {
-		if tp.Ready() && runtime_canSpin(iter) {
-			iter++
-			runtime_doSpin()
-		} else {
-			runtime.Gosched()
-		}
+		tp.Ready()
 	}
 }
