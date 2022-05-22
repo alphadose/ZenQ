@@ -37,13 +37,9 @@ type node struct {
 // This keeps only one parked goroutine in state at all times
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
-func (tp *ThreadParker) ParkBack() {
+func (tp *ThreadParker) Park() {
 	tp.enqueue()
 	mcall(fast_park)
-}
-
-func (tp *ThreadParker) ParkFront() {
-	tp.ParkBack()
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue

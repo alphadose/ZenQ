@@ -104,36 +104,12 @@ retry:
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
 		// selectParker.Ready()
-		writeParker.ParkBack()
+		writeParker.Park()
 		goto retry
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
 	// Ready blocking selector if any
-	// selectParker.Ready()
-}
-
-// WriteWithHighPriority is the same as write except for the fact that the element written is not necessarily at
-// the end of the queue, it might be a lot more closer to the read pointer depending on the queue state
-// Useful in cases where we might want a certain element to skip all waiters in the queue
-func (self *ZenQ[T]) WriteWithHighPriority(value T) {
-	if atomic.LoadUint32(&self.globalState) > StateOpen {
-		return
-	}
-	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
-	slotState := &self.contents[idx].State
-	writeParker := self.contents[idx].WriteParker
-	// selectParker := self.contents[idx].SelectParker
-
-retry:
-	if !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		// selectParker.Ready()
-		// Park at the front of the wait queue guaranteeing high priority
-		writeParker.ParkFront()
-		goto retry
-	}
-	self.contents[idx].Item = value
-	atomic.StoreUint32(slotState, SlotCommitted)
 	// selectParker.Ready()
 }
 
@@ -197,7 +173,7 @@ func (self *ZenQ[T]) Close() {
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		selectParker.Ready()
-		writeParker.ParkBack()
+		writeParker.Park()
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
