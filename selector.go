@@ -1,7 +1,6 @@
 package zenq
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -73,9 +72,6 @@ func Select(streams ...Selectable) (data any, ok bool) {
 		go stream.SelectRead(sel)
 	}
 	// park and wait for notification
-	println("kook")
 	mcall(fast_park)
-	fmt.Println(sel.data)
-	println("nooo")
 	return sel.data, sel.Selected() // lock == SelectionOpen means all queues were closed hence no read possible
 }

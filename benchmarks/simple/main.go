@@ -39,11 +39,11 @@ var (
 	currSize uint64 = throughput[0]
 
 	// input batch size
-	throughput = []uint64{60, 600, 6e3, 6e6, 6e8}
+	throughput = []uint64{60, 600, 6e3, 6e6, 6e7}
 	// throughput = []uint64{5}
 
 	// Number of writers/producers which will be writing to the queue concurrently
-	numConcurrentWriters uint64 = 1
+	numConcurrentWriters uint64 = 3
 
 	// native channel
 	ch chan Payload = make(chan Payload, channelBufferSize)

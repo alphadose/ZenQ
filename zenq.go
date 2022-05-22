@@ -114,9 +114,7 @@ func (self *ZenQ[T]) Write(value T) {
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
-	// println("koo")
 	readParker.ReleasePriority()
-	// println("noo")
 }
 
 // Read reads a value from the queue, you can once read once per object
@@ -145,13 +143,14 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if shouldSpin {
 				wait()
 			} else {
-				self.readParker.ParkPriority()
+				runtime.Gosched()
+				// self.readParker.ParkPriority()
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
 				// Queue closed, released all parked readers
-				// readParker.Release()
+				self.readParker.ReleasePriority()
 			}
 			return getDefault[T](), false
 		case SlotCommitted:
@@ -205,50 +204,50 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 		return
 	}
 
+	readParker := self.readParker
+
 	// Get reader index
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	// selectParker := self.contents[idx].SelectParker
+
+	shouldSpin := false
 
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
 			runtime.Gosched()
 		case SlotEmpty:
-			writeParker.Ready()
-			runtime_doSpin()
-			// if writeParker.Ready() {
-			// 	runtime.Gosched()
-			// } else {
-			// 	// selectParker.ParkBack()
-			// 	runtime_doSpin()
-			// }
+			shouldSpin = shouldSpin || writeParker.Ready()
+			if shouldSpin {
+				wait()
+			} else {
+				readParker.ParkPriority()
+			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
-				// selectParker.Release()
+				readParker.ReleasePriority()
 			}
 			return
 		case SlotCommitted:
 			continue
 		}
-		// Drop slot contention if the main selector thread no longer exists or if queue is closed
-		if sel.Selected() || atomic.LoadUint32(&self.globalState) == StateFullyClosed {
+		// Drop slot contention if queue is closed
+		if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 			return
 		}
 	}
 
 	data := self.contents[idx].Item
 
-	defer atomic.StoreUint32(slotState, SlotEmpty)
-
 	if sel.AcquireLock() {
 		sel.WriteAndSchedule(data)
 	} else {
-		// go self.WriteWithHighPriority(data)
+		readParker.ReleasePriority()
 		go self.Write(data)
 	}
+	atomic.StoreUint32(slotState, SlotEmpty)
 }
 
 // Reset resets the queue state
