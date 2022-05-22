@@ -57,10 +57,8 @@ type (
 
 	Slot[T any] struct {
 		State       uint32
-		Readers     int64
 		Writers     int64
 		WriteParker *ThreadParker
-		ReadParker  *ThreadParker
 		Item        T
 	}
 
@@ -75,6 +73,10 @@ type (
 		_p3         cacheLinePadding
 		globalState uint32
 		_p4         cacheLinePadding
+		readParker  *ThreadParker
+		_p0         cacheLinePadding
+		readers     int64
+		_p6         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
 		_p5      cacheLinePadding
@@ -85,9 +87,9 @@ type (
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
 	for idx := range contents {
-		contents[idx].WriteParker, contents[idx].ReadParker = NewThreadParker(), NewThreadParker()
+		contents[idx].WriteParker = NewThreadParker()
 	}
-	return &ZenQ[T]{contents: contents}
+	return &ZenQ[T]{contents: contents, readParker: NewThreadParker()}
 }
 
 // Write writes a value to the queue
@@ -97,10 +99,10 @@ func (self *ZenQ[T]) Write(value T) {
 	}
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	numReaders := &self.contents[idx].Readers
+	// numReaders := &self.readers
 	numWriters := &self.contents[idx].Writers
 	writeParker := self.contents[idx].WriteParker
-	readParker := self.contents[idx].ReadParker
+	readParker := self.readParker
 
 	atomic.AddInt64(numWriters, 1)
 
@@ -108,26 +110,35 @@ func (self *ZenQ[T]) Write(value T) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		if atomic.LoadInt64(numReaders) > 0 {
-			readParker.Ready()
-			wait()
-		} else {
-			writeParker.ParkBack()
-		}
+		readParker.Ready()
+		// runtime.Gosched()
+		writeParker.ParkBack()
+		// if
+		// if atomic.LoadInt64(numReaders) > 0 {
+		// 	readParker.Ready()
+		// 	if atomic.LoadInt64(numWriters) == 1 {
+		// 		wait()
+		// 	} else {
+		// 		writeParker.ParkBack()
+		// 	}
+		// } else {
+		// 	writeParker.ParkBack()
+		// }
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
 	atomic.AddInt64(numWriters, -1)
+	readParker.Ready()
 }
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, open bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	numReaders := &self.contents[idx].Readers
+	numReaders := &self.readers
 	numWriters := &self.contents[idx].Writers
 	writeParker := self.contents[idx].WriteParker
-	readParker := self.contents[idx].ReadParker
+	readParker := self.readParker
 
 	atomic.AddInt64(numReaders, 1)
 
@@ -146,6 +157,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 				return getDefault[T](), false
 			}
+			writeParker.Ready()
 			waiting = waiting || writeParker.Ready()
 			if waiting || atomic.LoadInt64(numWriters) > 0 {
 				wait()
@@ -181,7 +193,7 @@ func (self *ZenQ[T]) Close() {
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	readParker := self.contents[idx].ReadParker
+	readParker := self.readParker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
@@ -216,7 +228,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	selectParker := self.contents[idx].ReadParker
+	selectParker := self.readParker
 
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
