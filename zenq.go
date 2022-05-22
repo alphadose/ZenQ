@@ -74,8 +74,6 @@ type (
 		globalState uint32
 		_p4         cacheLinePadding
 		readParker  *ThreadParker
-		_p0         cacheLinePadding
-		readers     int64
 		_p6         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
@@ -100,19 +98,23 @@ func (self *ZenQ[T]) Write(value T) {
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	// numReaders := &self.readers
-	numWriters := &self.contents[idx].Writers
+	// numWriters := &self.contents[idx].Writers
 	writeParker := self.contents[idx].WriteParker
 	readParker := self.readParker
 
-	atomic.AddInt64(numWriters, 1)
+	// atomic.AddInt64(numWriters, 1)
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		readParker.Ready()
+		if readParker.Ready() {
+			runtime.Gosched()
+		} else {
+			writeParker.ParkBack()
+		}
 		// runtime.Gosched()
-		writeParker.ParkBack()
+
 		// if
 		// if atomic.LoadInt64(numReaders) > 0 {
 		// 	readParker.Ready()
@@ -127,20 +129,16 @@ func (self *ZenQ[T]) Write(value T) {
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
-	atomic.AddInt64(numWriters, -1)
-	readParker.Ready()
+	// readParker.Ready()
 }
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, open bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
-	numReaders := &self.readers
-	numWriters := &self.contents[idx].Writers
+	// numWriters := &self.contents[idx].Writers
 	writeParker := self.contents[idx].WriteParker
 	readParker := self.readParker
-
-	atomic.AddInt64(numReaders, 1)
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
@@ -157,14 +155,19 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 				return getDefault[T](), false
 			}
-			writeParker.Ready()
 			waiting = waiting || writeParker.Ready()
-			if waiting || atomic.LoadInt64(numWriters) > 0 {
+			if waiting {
 				wait()
 			} else {
-				// Park in case no writers available
 				readParker.ParkBack()
 			}
+			// waiting = waiting || writeParker.Ready()
+			// if waiting || atomic.LoadInt64(numWriters) > 0 {
+			// 	wait()
+			// } else {
+			// 	// Park in case no writers available
+			// 	readParker.ParkBack()
+			// }
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
@@ -176,7 +179,6 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			continue
 		}
 	}
-	atomic.AddInt64(numReaders, -1)
 	return self.contents[idx].Item, true
 }
 
