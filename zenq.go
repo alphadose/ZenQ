@@ -57,6 +57,7 @@ type (
 
 	Slot[T any] struct {
 		State       uint32
+		Readers     int64
 		Writers     int64
 		WriteParker *ThreadParker
 		ReadParker  *ThreadParker
@@ -96,58 +97,39 @@ func (self *ZenQ[T]) Write(value T) {
 	}
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
+	numReaders := &self.contents[idx].Readers
 	numWriters := &self.contents[idx].Writers
 	writeParker := self.contents[idx].WriteParker
 	readParker := self.contents[idx].ReadParker
 
 	atomic.AddInt64(numWriters, 1)
 
-	waiting := false
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		waiting = waiting || readParker.Ready()
-		if waiting {
+		if atomic.LoadInt64(numReaders) > 0 {
+			readParker.Ready()
 			wait()
 		} else {
 			writeParker.ParkBack()
 		}
-		// readParker.Ready()
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
 	atomic.AddInt64(numWriters, -1)
 }
 
-// WriteWithHighPriority is the same as write except for the fact that the element written is not necessarily at
-// the end of the queue, it might be a lot more closer to the read pointer depending on the queue state
-// Useful in cases where we might want a certain element to skip all waiters in the queue
-func (self *ZenQ[T]) WriteWithHighPriority(value T) {
-	if atomic.LoadUint32(&self.globalState) > StateOpen {
-		return
-	}
-	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
-	slotState := &self.contents[idx].State
-	writeParker := self.contents[idx].WriteParker
-	// selectParker := self.contents[idx].SelectParker
-
-	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		// selectParker.Ready()
-		// Park at the front of the wait queue guaranteeing high priority
-		writeParker.ParkFront()
-	}
-	self.contents[idx].Item = value
-	atomic.StoreUint32(slotState, SlotCommitted)
-	// selectParker.Ready()
-}
-
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, open bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
+	numReaders := &self.contents[idx].Readers
+	numWriters := &self.contents[idx].Writers
 	writeParker := self.contents[idx].WriteParker
 	readParker := self.contents[idx].ReadParker
+
+	atomic.AddInt64(numReaders, 1)
 
 	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
 	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
@@ -165,7 +147,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				return getDefault[T](), false
 			}
 			waiting = waiting || writeParker.Ready()
-			if waiting || atomic.LoadInt64(&self.contents[idx].Writers) > 0 {
+			if waiting || atomic.LoadInt64(numWriters) > 0 {
 				wait()
 			} else {
 				// Park in case no writers available
@@ -182,6 +164,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			continue
 		}
 	}
+	atomic.AddInt64(numReaders, -1)
 	return self.contents[idx].Item, true
 }
 
@@ -273,6 +256,28 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 		// go self.WriteWithHighPriority(data)
 		go self.Write(data)
 	}
+}
+
+// WriteWithHighPriority is the same as write except for the fact that the element written is not necessarily at
+// the end of the queue, it might be a lot more closer to the read pointer depending on the queue state
+// Useful in cases where we might want a certain element to skip all waiters in the queue
+func (self *ZenQ[T]) WriteWithHighPriority(value T) {
+	if atomic.LoadUint32(&self.globalState) > StateOpen {
+		return
+	}
+	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
+	slotState := &self.contents[idx].State
+	writeParker := self.contents[idx].WriteParker
+	// selectParker := self.contents[idx].SelectParker
+
+	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+		// selectParker.Ready()
+		// Park at the front of the wait queue guaranteeing high priority
+		writeParker.ParkFront()
+	}
+	self.contents[idx].Item = value
+	atomic.StoreUint32(slotState, SlotCommitted)
+	// selectParker.Ready()
 }
 
 // Reset resets the queue state
