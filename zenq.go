@@ -56,10 +56,9 @@ type (
 	cacheLinePadding [8]uint64
 
 	Slot[T any] struct {
-		State        uint32
-		WriteParker  *ThreadParker
-		SelectParker *ThreadParker
-		Item         T
+		State       uint32
+		WriteParker *ThreadParker
+		Item        T
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -73,9 +72,11 @@ type (
 		_p3         cacheLinePadding
 		globalState uint32
 		_p4         cacheLinePadding
+		readParker  *ThreadParker
+		_p5         cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
-		_p5      cacheLinePadding
+		_p6      cacheLinePadding
 	}
 )
 
@@ -83,9 +84,9 @@ type (
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
 	for idx := range contents {
-		contents[idx].WriteParker, contents[idx].SelectParker = NewThreadParker(), NewThreadParker()
+		contents[idx].WriteParker = NewThreadParker()
 	}
-	return &ZenQ[T]{contents: contents}
+	return &ZenQ[T]{contents: contents, readParker: NewThreadParker()}
 }
 
 // Write writes a value to the queue
@@ -93,24 +94,24 @@ func (self *ZenQ[T]) Write(value T) {
 	if atomic.LoadUint32(&self.globalState) > StateOpen {
 		return
 	}
+	readParker := self.readParker
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	// selectParker := self.contents[idx].SelectParker
 
 retry:
 	// CAS -> change slot_state to busy if slot_state == empty
 	if !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
-		// selectParker.Ready()
+		readParker.Ready()
 		writeParker.Park()
 		goto retry
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
 	// Ready blocking selector if any
-	// selectParker.Ready()
+	readParker.Ready()
 }
 
 // Read reads a value from the queue, you can once read once per object
@@ -168,16 +169,16 @@ func (self *ZenQ[T]) Close() {
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	selectParker := self.contents[idx].SelectParker
+	readParker := self.readParker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		selectParker.Ready()
+		readParker.Ready()
 		writeParker.Park()
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
-	selectParker.Ready()
+	readParker.Ready()
 }
 
 // CloseAsync closes the channel asynchronously
