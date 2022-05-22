@@ -15,8 +15,9 @@ var nodePool = sync.Pool{
 // Uses a thread safe linked list for storing goroutine references
 // theory from https://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 type ThreadParker struct {
-	head unsafe.Pointer
-	tail unsafe.Pointer
+	head    unsafe.Pointer
+	tail    unsafe.Pointer
+	readers int64
 }
 
 // NewThreadParker returns a new thread parker.
@@ -42,6 +43,13 @@ func (tp *ThreadParker) Park() {
 	mcall(fast_park)
 }
 
+func (tp *ThreadParker) ParkPriority() {
+	atomic.AddInt64(&tp.readers, 1)
+	tp.enqueue()
+	mcall(fast_park)
+	atomic.AddInt64(&tp.readers, -1)
+}
+
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() (readied bool) {
 	if gp := tp.dequeue(); gp != nil {
@@ -50,6 +58,20 @@ func (tp *ThreadParker) Ready() (readied bool) {
 		return true
 	}
 	return false
+}
+
+func (tp *ThreadParker) ReleasePriority() {
+retry:
+	if atomic.LoadInt64(&tp.readers) > 0 {
+		if gp := tp.dequeue(); gp != nil {
+			wait_until_parked(gp)
+			goready(gp, 1)
+			return
+		} else {
+			wait()
+			goto retry
+		}
+	}
 }
 
 // enqueue puts the current goroutine pointer at the tail of the list

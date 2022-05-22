@@ -20,9 +20,6 @@ import (
 	"sync/atomic"
 )
 
-// whether the system has multiple cores or a single core
-var multicore = runtime.NumCPU() > 1
-
 const (
 	power = 12
 
@@ -95,30 +92,31 @@ func (self *ZenQ[T]) Write(value T) {
 		return
 	}
 	readParker := self.readParker
+
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
-		// guaranteening low latency unless the user's reader thread is blocked for some reason
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
 			runtime.Gosched()
 		case SlotCommitted:
-			readParker.Ready()
+			readParker.ReleasePriority()
 			writeParker.Park()
 		case SlotEmpty:
 			continue
 		case SlotClosed:
-			readParker.Ready()
+			readParker.ReleasePriority()
 			return
 		}
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
-	readParker.Ready()
+	// println("koo")
+	readParker.ReleasePriority()
+	// println("noo")
 }
 
 // Read reads a value from the queue, you can once read once per object
@@ -147,13 +145,13 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if shouldSpin {
 				wait()
 			} else {
-				runtime.Gosched()
+				self.readParker.ParkPriority()
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
-				// Queue closed, released all parked select_readers
-				// self.contents[idx].SelectParker.Release()
+				// Queue closed, released all parked readers
+				// readParker.Release()
 			}
 			return getDefault[T](), false
 		case SlotCommitted:

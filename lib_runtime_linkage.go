@@ -147,6 +147,9 @@ func wait_until_parked(gp unsafe.Pointer) {
 	}
 }
 
+// whether the system has multiple cores or a single core
+var multicore = runtime.NumCPU() > 1
+
 func wait() {
 	if multicore {
 		runtime_doSpin()
