@@ -43,6 +43,7 @@ func main() {
 				fmt.Printf("Received pointer %#v\n", data)
 			}
 		}
+		println(i)
 	}
 }
 
