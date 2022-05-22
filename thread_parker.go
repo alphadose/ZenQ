@@ -1,74 +1,114 @@
 package zenq
 
 import (
-	"runtime"
+	"sync"
 	"sync/atomic"
 	"unsafe"
 )
 
-func NewThreadParker() *ThreadParker {
-	return &ThreadParker{sema: 1}
+var nodePool = sync.Pool{
+	New: func() any { return new(node) },
 }
 
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
 // useful for saving up resources by parking excess goroutines and pre-empt them when required with minimal latency overhead
+// Uses a thread safe linked list for storing goroutine references
+// theory from https://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 type ThreadParker struct {
-	sema         uint32
-	waiters      int64
-	parkedThread unsafe.Pointer
+	head unsafe.Pointer
+	tail unsafe.Pointer
 }
 
-// used for storing the goroutine pointer *g which will be later called via Ready()
-func zenqParkCommit(gp, threadParkingLocation unsafe.Pointer) bool {
-	atomic.StorePointer((*unsafe.Pointer)(threadParkingLocation), gp)
-	return true
+// NewThreadParker returns a new thread parker.
+func NewThreadParker() *ThreadParker {
+	n := nodePool.Get().(*node)
+	n.value = nil
+	n.next = nil
+	ptr := unsafe.Pointer(n)
+	return &ThreadParker{head: ptr, tail: ptr}
 }
 
-// park parks the current calling goroutine
+type node struct {
+	value unsafe.Pointer
+	next  unsafe.Pointer
+}
+
+// Park parks the current calling goroutine
 // This keeps only one parked goroutine in state at all times
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
-func park(tp *ThreadParker, lifo bool) {
-	atomic.AddInt64(&tp.waiters, 1)
-	runtime_SemacquireMutex(&tp.sema, lifo, 1)
-	gopark(zenqParkCommit, unsafe.Pointer(&tp.parkedThread), waitReasonSleep, traceEvGoBlock, 1)
-	runtime_Semrelease(&tp.sema, atomic.AddInt64(&tp.waiters, -1) > 0, 1)
-}
-
-// ParkBack puts the calling goroutine at the end of wait queue
 func (tp *ThreadParker) ParkBack() {
-	park(tp, false)
+	tp.enqueue()
+	mcall(fast_park)
 }
 
-// ParkFront puts the calling goroutine at the front of wait queue
-// should be used for high priority goroutines
 func (tp *ThreadParker) ParkFront() {
-	park(tp, true)
+	tp.ParkBack()
 }
 
-// Ready calls a single parked goroutine if any and moves other goroutines up the queue
-// It returns if it was able to ready a goroutine or not based on availability
+// Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() (readied bool) {
-	for atomic.LoadInt64(&tp.waiters) > 0 {
-		if gp := atomic.SwapPointer(&tp.parkedThread, nil); gp != nil {
-			goready(gp, 1)
-			return true
-		} else {
-			wait()
-		}
+	if gp := tp.dequeue(); gp != nil {
+		wait_until_parked(gp)
+		goready(gp, 1)
+		return true
 	}
 	return false
 }
 
-// Release releases all parked goroutines
-func (tp *ThreadParker) Release() {
-	iter := 0
-	for atomic.LoadInt64(&tp.waiters) > 0 {
-		if tp.Ready() && runtime_canSpin(iter) {
-			iter++
-			runtime_doSpin()
-		} else {
-			runtime.Gosched()
+// enqueue puts the current goroutine pointer at the tail of the list
+func (q *ThreadParker) enqueue() {
+	n := nodePool.Get().(*node)
+	n.value, n.next = GetG(), nil
+	for {
+		tail := load(&q.tail)
+		next := load(&tail.next)
+		if tail == load(&q.tail) { // are tail and next consistent?
+			if next == nil {
+				if cas(&tail.next, next, n) {
+					cas(&q.tail, tail, n) // Enqueue is done.  try to swing tail to the inserted node
+					return
+				}
+			} else { // tail was not pointing to the last node
+				// try to swing Tail to the next node
+				cas(&q.tail, tail, next)
+			}
 		}
 	}
+}
+
+// dequeue removes and returns the value at the head of the queue
+// It returns nil if the queue is empty
+func (q *ThreadParker) dequeue() unsafe.Pointer {
+	for {
+		head := load(&q.head)
+		tail := load(&q.tail)
+		next := load(&head.next)
+		if head == load(&q.head) { // are head, tail, and next consistent?
+			if head == tail { // is queue empty or tail falling behind?
+				if next == nil { // is queue empty?
+					return nil
+				}
+				// tail is falling behind.  try to advance it
+				cas(&q.tail, tail, next)
+			} else {
+				// read value before CAS otherwise another dequeue might free the next node
+				v := next.value
+				if cas(&q.head, head, next) {
+					// sysFreeOS(unsafe.Pointer(head), nodeSize)
+					nodePool.Put(head)
+					return v // Dequeue is done.  return
+				}
+			}
+		}
+	}
+}
+
+func load(p *unsafe.Pointer) (n *node) {
+	return (*node)(atomic.LoadPointer(p))
+}
+
+func cas(p *unsafe.Pointer, old, new *node) (ok bool) {
+	return atomic.CompareAndSwapPointer(
+		p, unsafe.Pointer(old), unsafe.Pointer(new))
 }

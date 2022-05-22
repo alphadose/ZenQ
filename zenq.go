@@ -151,19 +151,20 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			shouldSpin = (shouldSpin || writeParker.Ready()) && multicore
+			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
+				return
+			}
+			shouldSpin = shouldSpin || writeParker.Ready()
 			if shouldSpin {
-				runtime_doSpin()
-			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
-				runtime.Gosched()
+				wait()
 			} else {
-				return getDefault[T](), false
+				runtime.Gosched()
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
 				// Queue closed, released all parked select_readers
-				self.contents[idx].SelectParker.Release()
+				// self.contents[idx].SelectParker.Release()
 			}
 			return getDefault[T](), false
 		case SlotCommitted:
@@ -221,7 +222,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	selectParker := self.contents[idx].SelectParker
+	// selectParker := self.contents[idx].SelectParker
 
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
@@ -239,7 +240,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
-				selectParker.Release()
+				// selectParker.Release()
 			}
 			return
 		case SlotCommitted:
