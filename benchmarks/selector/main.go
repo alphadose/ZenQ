@@ -59,6 +59,7 @@ func zenqSelector() {
 				cs2Ctr++
 			}
 		}
+		// println(i)
 	}
 	if intCtr != validCount || strCtr != validCount || cs1Ctr != validCount || cs2Ctr != validCount {
 		panic("Data Loss")

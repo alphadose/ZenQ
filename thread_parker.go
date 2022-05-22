@@ -114,6 +114,7 @@ func (q *ThreadParker) dequeue() unsafe.Pointer {
 				v := next.value
 				if cas(&q.head, head, next) {
 					// sysFreeOS(unsafe.Pointer(head), nodeSize)
+					head.value, head.next = nil, nil
 					nodePool.Put(head)
 					return v // Dequeue is done.  return
 				}

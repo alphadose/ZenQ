@@ -45,7 +45,8 @@ func (sel *Selection) IncrementReferenceCount() {
 
 func (sel *Selection) DecrementReferenceCount() {
 	if atomic.AddInt64(&sel.referenceCount, -1) == 0 {
-		sel.collectorPool.Put(sel)
+		// println("kekraw")
+		// sel.collectorPool.Put(sel)
 	}
 }
 
