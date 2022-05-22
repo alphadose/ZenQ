@@ -220,7 +220,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 		case SlotEmpty:
 			shouldSpin = shouldSpin || writeParker.Ready()
 			if shouldSpin {
-				wait()
+				runtime.Gosched()
 			} else {
 				readParker.ParkPriority()
 			}
@@ -244,7 +244,7 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 	if sel.AcquireLock() {
 		sel.WriteAndSchedule(data)
 	} else {
-		readParker.ReleasePriority()
+		// readParker.ReleasePriority()
 		go self.Write(data)
 	}
 	atomic.StoreUint32(slotState, SlotEmpty)
