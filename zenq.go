@@ -149,14 +149,10 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
-			if multicore {
-				runtime_doSpin()
-			} else {
-				runtime.Gosched()
-			}
+			wait()
 		case SlotEmpty:
-			shouldSpin = shouldSpin || writeParker.Ready()
-			if shouldSpin && multicore {
+			shouldSpin = (shouldSpin || writeParker.Ready()) && multicore
+			if shouldSpin {
 				runtime_doSpin()
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				runtime.Gosched()

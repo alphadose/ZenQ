@@ -49,9 +49,13 @@ func (tp *ThreadParker) ParkFront() {
 // Ready calls a single parked goroutine if any and moves other goroutines up the queue
 // It returns if it was able to ready a goroutine or not based on availability
 func (tp *ThreadParker) Ready() (readied bool) {
-	if g := atomic.SwapPointer(&tp.parkedThread, nil); g != nil {
-		goready(g, 1)
-		return true
+	for atomic.LoadInt64(&tp.waiters) > 0 {
+		if gp := atomic.SwapPointer(&tp.parkedThread, nil); gp != nil {
+			goready(gp, 1)
+			return true
+		} else {
+			wait()
+		}
 	}
 	return false
 }

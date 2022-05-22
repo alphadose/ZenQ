@@ -153,6 +153,14 @@ func wait_until_parked(gp unsafe.Pointer) {
 	}
 }
 
+func wait() {
+	if multicore {
+		runtime_doSpin()
+	} else {
+		runtime.Gosched()
+	}
+}
+
 type waitReason uint8
 
 const (
