@@ -98,12 +98,14 @@ func (self *ZenQ[T]) Write(value T) {
 	writeParker := self.contents[idx].WriteParker
 	// selectParker := self.contents[idx].SelectParker
 
+retry:
 	// CAS -> change slot_state to busy if slot_state == empty
-	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+	if !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// The body of this for loop will never be invoked in case of SPSC (Single-Producer-Single-Consumer) mode
 		// guaranteening low latency unless the user's reader thread is blocked for some reason
 		// selectParker.Ready()
 		writeParker.ParkBack()
+		goto retry
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
@@ -123,10 +125,12 @@ func (self *ZenQ[T]) WriteWithHighPriority(value T) {
 	writeParker := self.contents[idx].WriteParker
 	// selectParker := self.contents[idx].SelectParker
 
-	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
+retry:
+	if !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		// selectParker.Ready()
 		// Park at the front of the wait queue guaranteeing high priority
 		writeParker.ParkFront()
+		goto retry
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
@@ -145,6 +149,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 	defer atomic.StoreUint32(slotState, SlotEmpty)
 
 	shouldSpin := false
+
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
