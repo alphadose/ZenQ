@@ -71,8 +71,6 @@ type (
 		waitList *ThreadParker
 	}
 
-	meow [8]uint64
-
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
 		// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
