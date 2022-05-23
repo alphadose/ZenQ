@@ -32,7 +32,7 @@ var testCases = []test{
 	{writers: zenq.QueueSize * 2, readers: 1, inputSize: zenq.QueueSize * 2 * 4},
 	{writers: 1, readers: zenq.QueueSize * 2, inputSize: zenq.QueueSize * 2 * 4},
 	{writers: 100, readers: 100, inputSize: 6e6},
-	{writers: 1000, readers: 1000, inputSize: 7e6},
+	{writers: 1e3, readers: 1e3, inputSize: 7e6},
 }
 
 func init() {
@@ -66,6 +66,9 @@ func benchmarkProduceConsumeChan(b *testing.B, t test) {
 
 	var wg sync.WaitGroup
 	wg.Add(t.writers)
+
+	// b.ResetTimer()
+
 	for writer := 0; writer < t.writers; writer++ {
 		go func() {
 			defer wg.Done()
@@ -108,6 +111,9 @@ func benchmarkProduceConsumeZenQ(b *testing.B, t test) {
 
 	var wg sync.WaitGroup
 	wg.Add(t.writers)
+
+	// b.ResetTimer()
+
 	for writer := 0; writer < t.writers; writer++ {
 		go func() {
 			defer wg.Done()

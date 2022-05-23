@@ -103,7 +103,7 @@ func New[T any]() *ZenQ[T] {
 	zenq.selectFactory.waitList = NewThreadParker()
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
-	runtime.Gosched()
+	// runtime.Gosched()
 	return zenq
 }
 
