@@ -250,11 +250,10 @@ drain:
 // Dump dumps the current queue state
 // Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Dump() {
-	fmt.Printf("writerIndex: %3d, readerIndex: %3d, content:", self.writerIndex, self.readerIndex)
+	fmt.Printf("writerIndex: %3d, readerIndex: %3d\n contents:-\n\n", self.writerIndex, self.readerIndex)
 	for index := range self.contents {
-		fmt.Printf("%5v : State -> %5v, Item -> %5v", index, self.contents[index].State, self.contents[index].Item)
+		fmt.Printf("%5v : State -> %5v, Item -> %5v\n", index, self.contents[index].State, self.contents[index].Item)
 	}
-	fmt.Print("\n")
 }
 
 // selectedSender is an auxillary thread which remains parked by default
@@ -268,7 +267,7 @@ func (self *ZenQ[T]) selectSender() {
 	var queueOpen bool
 
 	for {
-		// park by default and wait for signal notification
+		// park by default and wait for Signal() notification from a selection process
 		mcall(fast_park)
 		if !readState {
 			data, queueOpen = self.Read()
@@ -277,19 +276,25 @@ func (self *ZenQ[T]) selectSender() {
 
 	selector_dequeue:
 		for {
+			// keep dequeuing selectors from waitlist and try to acquire one
+			// if acquired write to selector, ready it and go back to parking state
 			if s := self.selectFactory.waitList.Dequeue(); s != nil {
 				sel := (*Selection)(s)
 				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
+					// implementaion of sending from closed channel to selector mechanism
 					if !queueOpen {
 						// Signal to the selector that this queue is closed
 						if sel.SignalQueueClosure() {
 							// unblock the selector thread if all queues are closed so that it returns nil, false
 							safe_ready(selThread)
 						}
+						// lazily decrement reference count until it is finally collected by the memory pool
 						sel.DecrementReferenceCount()
 						continue
 					}
+					// write to the selector
 					sel.Data = data
+					// notify selector
 					safe_ready(selThread)
 					readState = false
 					sel.DecrementReferenceCount()

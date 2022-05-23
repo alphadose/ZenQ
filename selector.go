@@ -12,6 +12,8 @@ func init() {
 	selectionPool.New = func() any { return &Selection{collectorPool: selectionPool} }
 }
 
+// Selection is an object shared by a selector and its children ZenQs
+// This object is used for selection notification
 type Selection struct {
 	ThreadPtr      *unsafe.Pointer
 	Data           any
@@ -26,14 +28,17 @@ func (sel *Selection) SignalQueueClosure() (allQueuesClosed bool) {
 	return atomic.AddInt64(&sel.numQueues, -1) == 0
 }
 
+// AllQueuesClosed returns whether all the queues present in selection are closed or not
 func (sel *Selection) AllQueuesClosed() bool {
 	return atomic.LoadInt64(&sel.numQueues) == 0
 }
 
+// IncrementReferenceCount does exactly what it says
 func (sel *Selection) IncrementReferenceCount() {
 	atomic.AddInt64(&sel.referenceCount, 1)
 }
 
+// DecrementReferenceCount decrements the reference count by 1 and puts the object back into the pool if it reaches 0
 func (sel *Selection) DecrementReferenceCount() {
 	if atomic.AddInt64(&sel.referenceCount, -1) == 0 {
 		sel.ThreadPtr, sel.Data, sel.numQueues = nil, nil, 0
@@ -41,6 +46,7 @@ func (sel *Selection) DecrementReferenceCount() {
 	}
 }
 
+// NewSelectionObject returns a selection object from the memory pool
 func NewSelectionObject() *Selection {
 	return selectionPool.Get().(*Selection)
 }
