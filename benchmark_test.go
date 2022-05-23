@@ -26,13 +26,13 @@ type test struct {
 }
 
 var testCases = []test{
-	{writers: 1, readers: 1, inputSize: 1000},
-	{writers: 3, readers: 3, inputSize: 3 * 1000},
-	{writers: 8, readers: 8, inputSize: 8 * 1000},
+	{writers: 1, readers: 1, inputSize: 1e3},
+	{writers: 3, readers: 3, inputSize: 3e3},
+	{writers: 8, readers: 8, inputSize: 8e3},
 	{writers: zenq.QueueSize * 2, readers: 1, inputSize: zenq.QueueSize * 2 * 4},
 	{writers: 1, readers: zenq.QueueSize * 2, inputSize: zenq.QueueSize * 2 * 4},
-	{writers: 100, readers: 100, inputSize: 6000000},
-	{writers: 1000, readers: 1000, inputSize: 7000000},
+	{writers: 100, readers: 100, inputSize: 6e6},
+	{writers: 1000, readers: 1000, inputSize: 7e6},
 }
 
 func init() {

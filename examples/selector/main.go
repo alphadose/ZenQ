@@ -28,7 +28,7 @@ func main() {
 	go looper(custom1Producer)
 	go looper(custom2Producer)
 
-	for i := 0; i < 44; i++ {
+	for i := 0; i < 40; i++ {
 
 		// Selection occurs here
 		if data, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
@@ -55,7 +55,7 @@ func custom1Producer(ctr int) { zq3.Write(custom1{alpha: ctr, beta: fmt.Sprint(c
 func custom2Producer(ctr int) { zq4.Write(&custom2{gamma: 1 << ctr}) }
 
 func looper(producer func(ctr int)) {
-	for i := 0; i < 11; i++ {
+	for i := 0; i < 10; i++ {
 		producer(i)
 	}
 }

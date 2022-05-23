@@ -1,6 +1,7 @@
 package zenq
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -86,6 +87,7 @@ func Select(streams ...Selectable) (data any, ok bool) {
 		waitq[idx].EnqueueSelector(sel)
 	}
 
+	iter := 0
 retry:
 	for idx := range waitq {
 		numSignals += waitq[idx].Signal()
@@ -93,7 +95,12 @@ retry:
 
 	// might cause deadlock without this case
 	if numSignals == 0 && atomic.LoadPointer(&g) != nil {
-		wait()
+		if runtime_canSpin(iter) && multicore {
+			iter++
+			runtime_doSpin()
+		} else {
+			runtime.Gosched()
+		}
 		goto retry
 	}
 

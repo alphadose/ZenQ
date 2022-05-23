@@ -102,10 +102,8 @@ func New[T any]() *ZenQ[T] {
 	zenq := &ZenQ[T]{contents: contents}
 	zenq.selectFactory.waitList = NewThreadParker()
 	go zenq.selectSender()
-	// allow the above auxillary goroutine to manifest in case of single core systems
-	if !multicore {
-		runtime.Gosched()
-	}
+	// allow the above auxillary thread to manifest
+	runtime.Gosched()
 	return zenq
 }
 

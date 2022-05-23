@@ -8,6 +8,7 @@
 * More resource efficient in terms of `memory_allocation/op` and `num_allocations/op` evident while benchmarking large batch size inputs
 * Handles the case where NUM_WRITER_GOROUTINES > NUM_CPU_CORES much better than native channels
 * Selection from multiple ZenQs just like golang's `select{}` ensuring fair selection and no starvation
+* Closing a ZenQ
 
 Benchmarks to support the above claims [here](#benchmarks)
 
@@ -16,7 +17,7 @@ Benchmarks to support the above claims [here](#benchmarks)
 You need Golang [1.18.x](https://go.dev/dl/) or above since this package uses generics
 
 ```bash
-$ go get github.com/alphadose/zenq@1.5.1
+$ go get github.com/alphadose/zenq@2.0.0
 ```
 
 ## Usage
@@ -51,8 +52,9 @@ func main() {
 	}
 
 	for i := 0; i < 100; i++ {
-        	var data payload = zq.Read()
-		fmt.Printf("%+v\n", data)
+		if data, queueOpen := zq.Read(); queueOpen {
+			fmt.Printf("%+v\n", data)
+		}
 	}
 }
 ```
@@ -92,15 +94,17 @@ func main() {
 	for i := 0; i < 40; i++ {
 
 		// Selection occurs here
-		switch data := zenq.Select(zq1, zq2, zq3, zq4).(type) {
-		case int:
-			fmt.Printf("Received int %d\n", data)
-		case string:
-			fmt.Printf("Received string %s\n", data)
-		case custom1:
-			fmt.Printf("Received custom data type number 1 %#v\n", data)
-		case *custom2:
-			fmt.Printf("Received pointer %#v\n", data)
+		if data, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
+			switch data.(type) {
+			case int:
+				fmt.Printf("Received int %d\n", data)
+			case string:
+				fmt.Printf("Received string %s\n", data)
+			case custom1:
+				fmt.Printf("Received custom data type number 1 %#v\n", data)
+			case *custom2:
+				fmt.Printf("Received pointer %#v\n", data)
+			}
 		}
 	}
 }
@@ -211,48 +215,38 @@ The above results show that ZenQ is more efficient than channels in all 3 metric
 
 ## Cherry on the Cake
 
-In SPSC mode ZenQ is faster than channels by **98 seconds** in case of input size 6 * 10<sup>8</sup>
+In SPSC mode ZenQ is faster than channels by **90 seconds** in case of input size 6 * 10<sup>8</sup>
 
 ```bash
 ❯ go run benchmarks/simple/main.go
 
 With Input Batch Size: 60 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 64.875µs
-ZenQ Runner completed transfer in: 9µs
+Native Channel Runner completed transfer in: 37.708µs
+ZenQ Runner completed transfer in: 14.5µs
 ====================================================================
 
 With Input Batch Size: 600 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 70.958µs
-ZenQ Runner completed transfer in: 44.958µs
+Native Channel Runner completed transfer in: 93.167µs
+ZenQ Runner completed transfer in: 55.042µs
 ====================================================================
 
 With Input Batch Size: 6000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 967.417µs
-ZenQ Runner completed transfer in: 518.916µs
+Native Channel Runner completed transfer in: 1.2905ms
+ZenQ Runner completed transfer in: 536.083µs
 ====================================================================
 
 With Input Batch Size: 6000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1.191589458s
-ZenQ Runner completed transfer in: 144.895583ms
+Native Channel Runner completed transfer in: 1.187596916s
+ZenQ Runner completed transfer in: 201.276ms
 ====================================================================
 
 With Input Batch Size: 600000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1m52.671809708s
-ZenQ Runner completed transfer in: 14.356517042s
+Native Channel Runner completed transfer in: 1m49.089332916s
+ZenQ Runner completed transfer in: 20.333452417s
 ====================================================================
 ```
-
-For a `select{}` based transfer experiment these are the results
-```bash
-❯ go run benchmarks/selector/main.go
-
-Chan Select Runner completed transfer in: 2m42.313942333s
-ZenQ Select Runner completed transfer in: 41.938121583s
-```
-
-Code available [here](./benchmarks/selector/main.go)

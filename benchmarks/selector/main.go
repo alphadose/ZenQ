@@ -18,7 +18,7 @@ type custom2 struct {
 
 const (
 	channelBufferSize     = 1 << 12
-	throughput        int = 6e5 // 6 * 10^5
+	throughput        int = 6e2 // 600
 	numProducers          = 4
 )
 
@@ -59,7 +59,6 @@ func zenqSelector() {
 				cs2Ctr++
 			}
 		}
-		// println(i)
 	}
 	if intCtr != validCount || strCtr != validCount || cs1Ctr != validCount || cs2Ctr != validCount {
 		panic("Data Loss")

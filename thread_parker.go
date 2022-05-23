@@ -14,9 +14,8 @@ var nodePool = sync.Pool{New: func() any { return new(node) }}
 // Uses a thread safe linked list for storing goroutine references
 // theory from https://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 type ThreadParker struct {
-	head    unsafe.Pointer
-	tail    unsafe.Pointer
-	readers int64
+	head unsafe.Pointer
+	tail unsafe.Pointer
 }
 
 // NewThreadParker returns a new thread parker.
