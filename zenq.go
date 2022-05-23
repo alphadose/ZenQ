@@ -163,7 +163,6 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 				wait()
 			} else {
 				runtime.Gosched()
-				// self.readParker.ParkPriority()
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
@@ -256,7 +255,7 @@ func (self *ZenQ[T]) Dump() {
 	}
 }
 
-// selectedSender is an auxillary thread which remains parked by default
+// selectSender is an auxillary thread which remains parked by default
 // only when a selector sends a signal, it is notified and tries to send back to the selector
 // if it fails, then it parks again and waits for another signal from another selection process
 // since it is parked most of the times, it consumes minimal cpu time making the selection process efficient

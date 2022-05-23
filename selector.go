@@ -6,6 +6,7 @@ import (
 	"unsafe"
 )
 
+// global memory pool for holding selection objects
 var selectionPool = &sync.Pool{}
 
 func init() {
@@ -23,7 +24,7 @@ type Selection struct {
 }
 
 // SignalQueueClosure signals the closure of one ZenQ to the selector thread
-// it returns if all queues were closed or not in which case the calling thread must goready the selector thread
+// it returns if all queues were closed or not in which case the calling thread must goready() the selector thread
 func (sel *Selection) SignalQueueClosure() (allQueuesClosed bool) {
 	return atomic.AddInt64(&sel.numQueues, -1) == 0
 }
@@ -42,6 +43,7 @@ func (sel *Selection) IncrementReferenceCount() {
 func (sel *Selection) DecrementReferenceCount() {
 	if atomic.AddInt64(&sel.referenceCount, -1) == 0 {
 		sel.ThreadPtr, sel.Data, sel.numQueues = nil, nil, 0
+		// reuse this object in another selection event thereby saving memory
 		sel.collectorPool.Put(sel)
 	}
 }
@@ -51,7 +53,7 @@ func NewSelectionObject() *Selection {
 	return selectionPool.Get().(*Selection)
 }
 
-// Selectable is an an interface for getting selected among many others
+// Selectable is an interface for getting selected among many others
 type Selectable interface {
 	IsClosed() bool
 	EnqueueSelector(*Selection)

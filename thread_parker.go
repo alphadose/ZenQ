@@ -6,9 +6,8 @@ import (
 	"unsafe"
 )
 
-var nodePool = sync.Pool{
-	New: func() any { return new(node) },
-}
+// global memory pool for storing and leasing node objects
+var nodePool = sync.Pool{New: func() any { return new(node) }}
 
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
 // useful for saving up resources by parking excess goroutines and pre-empt them when required with minimal latency overhead
@@ -29,6 +28,7 @@ func NewThreadParker() *ThreadParker {
 	return &ThreadParker{head: ptr, tail: ptr}
 }
 
+// a single node in the linked list
 type node struct {
 	value unsafe.Pointer
 	next  unsafe.Pointer
@@ -43,13 +43,6 @@ func (tp *ThreadParker) Park() {
 	mcall(fast_park)
 }
 
-func (tp *ThreadParker) ParkPriority() {
-	atomic.AddInt64(&tp.readers, 1)
-	tp.Enqueue(GetG())
-	mcall(fast_park)
-	atomic.AddInt64(&tp.readers, -1)
-}
-
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() (readied bool) {
 	if gp := tp.Dequeue(); gp != nil {
@@ -57,19 +50,6 @@ func (tp *ThreadParker) Ready() (readied bool) {
 		return true
 	}
 	return false
-}
-
-func (tp *ThreadParker) ReleasePriority() {
-retry:
-	if atomic.LoadInt64(&tp.readers) > 0 {
-		if gp := tp.Dequeue(); gp != nil {
-			safe_ready(gp)
-			return
-		} else {
-			wait()
-			goto retry
-		}
-	}
 }
 
 // enqueue puts the current goroutine pointer at the tail of the list
