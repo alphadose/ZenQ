@@ -177,12 +177,22 @@ func (self *ZenQ[T]) Close() {
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		readParker.Ready()
-		writeParker.Park()
+		switch atomic.LoadUint32(slotState) {
+		case SlotBusy:
+			runtime.Gosched()
+		case SlotCommitted:
+			readParker.ReleasePriority()
+			writeParker.Park()
+		case SlotEmpty:
+			continue
+		case SlotClosed:
+			readParker.ReleasePriority()
+			return
+		}
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
-	readParker.Ready()
+	readParker.ReleasePriority()
 }
 
 // CloseAsync closes the channel asynchronously
@@ -197,6 +207,8 @@ func (self *ZenQ[T]) CloseAsync() {
 // Contest for reads in a less aggressive manner to save resources
 // There wont be any context switching between selection reader goroutines, they will be signalled via selectParker
 func (self *ZenQ[T]) SelectRead(sel *Selection) {
+	// return object to memory pool after all selectable goroutines have returned
+	defer sel.DecrementReferenceCount()
 	if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 		return
 	}
@@ -245,8 +257,6 @@ func (self *ZenQ[T]) SelectRead(sel *Selection) {
 		self.Write(data)
 	}
 	atomic.StoreUint32(slotState, SlotEmpty)
-	// return object to memory pool after all selectable goroutines have returned
-	sel.DecrementReferenceCount()
 }
 
 // Reset resets the queue state
