@@ -70,13 +70,14 @@ func Select(streams ...Selectable) (data any, ok bool) {
 		}
 		waitq = append(waitq, streams[idx])
 	}
-	if len(waitq) == 0 {
+	numStreams := int64(len(waitq))
+	if numStreams == 0 {
 		return nil, false
 	}
 	sel := NewSelectionObject()
 	g := GetG()
 
-	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, int64(len(waitq)), int64(len(waitq))+1
+	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, numStreams, numStreams+1
 	defer sel.DecrementReferenceCount()
 
 	var numSignals uint8 = 0
