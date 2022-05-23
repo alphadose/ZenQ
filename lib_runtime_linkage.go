@@ -147,6 +147,14 @@ func wait_until_parked(gp unsafe.Pointer) {
 	}
 }
 
+// call ready after ensuring the goroutine is parked
+func safe_ready(gp unsafe.Pointer) {
+	for Readgstatus(gp) != _Gwaiting {
+		wait()
+	}
+	goready(gp, 1)
+}
+
 // whether the system has multiple cores or a single core
 var multicore = runtime.NumCPU() > 1
 

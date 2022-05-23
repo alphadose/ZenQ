@@ -53,8 +53,7 @@ func (tp *ThreadParker) ParkPriority() {
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() (readied bool) {
 	if gp := tp.Dequeue(); gp != nil {
-		wait_until_parked(gp)
-		goready(gp, 1)
+		safe_ready(gp)
 		return true
 	}
 	return false
@@ -64,8 +63,7 @@ func (tp *ThreadParker) ReleasePriority() {
 retry:
 	if atomic.LoadInt64(&tp.readers) > 0 {
 		if gp := tp.Dequeue(); gp != nil {
-			wait_until_parked(gp)
-			goready(gp, 1)
+			safe_ready(gp)
 			return
 		} else {
 			wait()
@@ -75,9 +73,9 @@ retry:
 }
 
 // enqueue puts the current goroutine pointer at the tail of the list
-func (q *ThreadParker) Enqueue(gp unsafe.Pointer) {
+func (q *ThreadParker) Enqueue(value unsafe.Pointer) {
 	n := nodePool.Get().(*node)
-	n.value, n.next = gp, nil
+	n.value, n.next = value, nil
 	for {
 		tail := load(&q.tail)
 		next := load(&tail.next)

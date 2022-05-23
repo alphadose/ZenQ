@@ -44,12 +44,10 @@ const (
 const (
 	// Not being selected
 	SelectionClosed = iota
-	// ZenQ is being selected, auxillary thread spawned
+	// Open for being selected
 	SelectionOpen
-	// ZenQ is selected by a thread, send back to that selector
-	Selected
-	// ready for sending data to selector
-	ReadyToSend
+	// Running state
+	SelectionRunning
 )
 
 // ZenQ Slot state enums
@@ -88,10 +86,8 @@ type (
 		_p3           cacheLinePadding
 		globalState   uint32
 		_p4           cacheLinePadding
-		readParker    *ThreadParker
-		_p5           cacheLinePadding
 		selectFactory SelectFactory
-		_p7           cacheLinePadding
+		_p5           cacheLinePadding
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
 		_p6      cacheLinePadding
@@ -104,7 +100,7 @@ func New[T any]() *ZenQ[T] {
 	for idx := range contents {
 		contents[idx].WriteParker = NewThreadParker()
 	}
-	zenq := &ZenQ[T]{contents: contents, readParker: NewThreadParker()}
+	zenq := &ZenQ[T]{contents: contents}
 	zenq.selectFactory.waitList = NewThreadParker()
 	return zenq
 }
@@ -114,7 +110,6 @@ func (self *ZenQ[T]) Write(value T) {
 	if atomic.LoadUint32(&self.globalState) > StateOpen {
 		return
 	}
-	readParker := self.readParker
 
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
@@ -126,18 +121,15 @@ func (self *ZenQ[T]) Write(value T) {
 		case SlotBusy:
 			runtime.Gosched()
 		case SlotCommitted:
-			readParker.ReleasePriority()
 			writeParker.Park()
 		case SlotEmpty:
 			continue
 		case SlotClosed:
-			readParker.ReleasePriority()
 			return
 		}
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
-	readParker.ReleasePriority()
 }
 
 // Read reads a value from the queue, you can once read once per object
@@ -172,8 +164,6 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
-				// Queue closed, released all parked readers
-				self.readParker.ReleasePriority()
 			}
 			return getDefault[T](), false
 		case SlotCommitted:
@@ -196,7 +186,6 @@ func (self *ZenQ[T]) Close() {
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
-	readParker := self.readParker
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
@@ -204,18 +193,15 @@ func (self *ZenQ[T]) Close() {
 		case SlotBusy:
 			runtime.Gosched()
 		case SlotCommitted:
-			readParker.ReleasePriority()
 			writeParker.Park()
 		case SlotEmpty:
 			continue
 		case SlotClosed:
-			readParker.ReleasePriority()
 			return
 		}
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
-	readParker.ReleasePriority()
 }
 
 // CloseAsync closes the channel asynchronously
@@ -224,12 +210,15 @@ func (self *ZenQ[T]) CloseAsync() {
 	go self.Close()
 }
 
-func (self *ZenQ[T]) OpenSelection() (opened bool) {
+func (self *ZenQ[T]) OpenSelection() {
 	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionClosed, SelectionOpen) {
-		return false
+		return
 	}
 	go self.selectSender()
-	return true
+	// allow the above auxillary goroutine to manifest in case of single core systems
+	if !multicore {
+		runtime.Gosched()
+	}
 }
 
 func (self *ZenQ[T]) selectSender() {
@@ -238,32 +227,50 @@ func (self *ZenQ[T]) selectSender() {
 	var data T
 	var queueOpen bool
 
-loop:
 	for {
 		mcall(fast_park)
 		if !readState {
 			data, queueOpen = self.Read()
 			readState = true
 		}
-		println(data)
-		println(queueOpen)
+
+	selector_dequeue:
 		for {
-			if gp := self.selectFactory.waitList.Dequeue(); gp != nil {
-				continue loop
+			if s := self.selectFactory.waitList.Dequeue(); s != nil {
+				sel := (*Selection)(s)
+				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
+					if !queueOpen {
+						if sel.SignalQueueClosure() {
+							safe_ready(selThread)
+						}
+						continue
+					}
+					sel.Data = data
+					safe_ready(selThread)
+					readState = false
+					break selector_dequeue
+				} else {
+					continue
+				}
+			} else {
+				break selector_dequeue
 			}
 		}
-		// data, ok := self.Read()
-		atomic.StoreUint32(&self.selectFactory.state, ReadyToSend)
+		atomic.StoreUint32(&self.selectFactory.state, SelectionOpen)
 	}
 }
 
-// func (self *ZenQ[T]) Signal() {
-// 	for !atomic.CompareAndSwapUint32(&self.selectionReference.state, Selected, SelectionOpen) {
-// 		runtime.Gosched()
-// 	}
-// 	wait_until_parked(self.selectionReference.selectorThread)
-// 	goready(self.selectionReference.selectorThread, 1)
-// }
+func (self *ZenQ[T]) Signal() {
+	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionOpen, SelectionRunning) {
+		return
+	}
+	safe_ready(self.selectFactory.auxThread)
+}
+
+// EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist
+func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
+	self.selectFactory.waitList.Enqueue(unsafe.Pointer(sel))
+}
 
 // IsClosed returns whether the zenq is closed for both reads/writes
 func (self *ZenQ[T]) IsClosed() bool {
