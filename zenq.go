@@ -102,6 +102,11 @@ func New[T any]() *ZenQ[T] {
 	}
 	zenq := &ZenQ[T]{contents: contents}
 	zenq.selectFactory.waitList = NewThreadParker()
+	go zenq.selectSender()
+	// allow the above auxillary goroutine to manifest in case of single core systems
+	if !multicore {
+		runtime.Gosched()
+	}
 	return zenq
 }
 
@@ -210,19 +215,8 @@ func (self *ZenQ[T]) CloseAsync() {
 	go self.Close()
 }
 
-func (self *ZenQ[T]) OpenSelection() {
-	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionClosed, SelectionOpen) {
-		return
-	}
-	go self.selectSender()
-	// allow the above auxillary goroutine to manifest in case of single core systems
-	if !multicore {
-		runtime.Gosched()
-	}
-}
-
 func (self *ZenQ[T]) selectSender() {
-	self.selectFactory.auxThread = GetG()
+	atomic.StorePointer(&self.selectFactory.auxThread, GetG())
 	readState := false
 	var data T
 	var queueOpen bool
@@ -240,7 +234,9 @@ func (self *ZenQ[T]) selectSender() {
 				sel := (*Selection)(s)
 				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
 					if !queueOpen {
+						// Signal to the selector that this queue is closed
 						if sel.SignalQueueClosure() {
+							// unblock the selector thread if all queues are closed so that it returns nil, false
 							safe_ready(selThread)
 						}
 						continue
@@ -260,11 +256,13 @@ func (self *ZenQ[T]) selectSender() {
 	}
 }
 
-func (self *ZenQ[T]) Signal() {
+func (self *ZenQ[T]) Signal() uint8 {
 	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionOpen, SelectionRunning) {
-		return
+		return 0
 	}
+	// println(self.selectFactory.auxThread)
 	safe_ready(self.selectFactory.auxThread)
+	return 1
 }
 
 // EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist

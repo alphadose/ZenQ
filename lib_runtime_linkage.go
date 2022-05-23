@@ -150,7 +150,11 @@ func wait_until_parked(gp unsafe.Pointer) {
 // call ready after ensuring the goroutine is parked
 func safe_ready(gp unsafe.Pointer) {
 	for Readgstatus(gp) != _Gwaiting {
-		wait()
+		if multicore {
+			runtime_doSpin()
+		} else {
+			runtime.Gosched()
+		}
 	}
 	goready(gp, 1)
 }

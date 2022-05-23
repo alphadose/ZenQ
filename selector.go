@@ -52,10 +52,9 @@ func NewSelectionObject() *Selection {
 
 // Selectable is an an interface for getting selected among many others
 type Selectable interface {
-	OpenSelection()
 	IsClosed() bool
 	EnqueueSelector(*Selection)
-	Signal()
+	Signal() uint8
 }
 
 // Select selects a single element out of multiple ZenQs
@@ -71,18 +70,25 @@ func Select(streams ...Selectable) (data any, ok bool) {
 	if len(waitq) == 0 {
 		return nil, false
 	}
-	for idx := range waitq {
-		waitq[idx].OpenSelection()
-	}
 	sel := NewSelectionObject()
 	g := GetG()
 	sel.ThreadPtr, sel.Data, sel.numQueues = &g, nil, int64(len(waitq))
+
+	var numSignals uint8
+retry:
+	numSignals = 0
 	for idx := range waitq {
 		waitq[idx].EnqueueSelector(sel)
 	}
 	for idx := range waitq {
-		waitq[idx].Signal()
+		numSignals += waitq[idx].Signal()
 	}
+	// println(numSignals)
+	if numSignals == 0 && atomic.LoadPointer(&g) != nil {
+		wait()
+		goto retry
+	}
+	println("here")
 	// park and wait for notification
 	mcall(fast_park)
 	return sel.Data, !sel.AllQueuesClosed()
