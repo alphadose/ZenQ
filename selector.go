@@ -75,11 +75,13 @@ func Select(streams ...Selectable) (data any, ok bool) {
 	sel.ThreadPtr, sel.Data, sel.numQueues = &g, nil, int64(len(waitq))
 
 	var numSignals uint8
-retry:
-	numSignals = 0
+
 	for idx := range waitq {
 		waitq[idx].EnqueueSelector(sel)
 	}
+
+retry:
+	numSignals = 0
 	for idx := range waitq {
 		numSignals += waitq[idx].Signal()
 	}

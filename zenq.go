@@ -42,10 +42,8 @@ const (
 )
 
 const (
-	// Not being selected
-	SelectionClosed = iota
 	// Open for being selected
-	SelectionOpen
+	SelectionOpen = iota
 	// Running state
 	SelectionRunning
 )
@@ -260,7 +258,6 @@ func (self *ZenQ[T]) Signal() uint8 {
 	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionOpen, SelectionRunning) {
 		return 0
 	}
-	// println(self.selectFactory.auxThread)
 	safe_ready(self.selectFactory.auxThread)
 	return 1
 }
