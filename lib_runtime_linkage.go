@@ -6,14 +6,8 @@ import (
 	_ "unsafe"
 )
 
-// Linking ZenQ with golang internal runtime library will allow the usage of getg() and goready()
-// function to schedule all goroutines without spinning
-// use goparkunlock() to park a goroutine, then preempt it using goready()
-// fetch the params *g used in goready() by using getg()
-// with this there will be significant improvement in performance
-
-// Alternative method is using assembly stubs to load the goroutine
-// stack pointer as demonstrated in https://github.com/sitano/gsysint
+// Linking ZenQ with golang internal runtime library to allow usage of scheduling primitives
+// like goready(), mcall() etc to allow efficient scheduling of goroutines
 
 type mutex struct {
 	// Futex-based impl treats it as uint32 key,
@@ -38,6 +32,7 @@ func unlock(l *mutex)
 func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
 
 // GetG returns the pointer to the current goroutine
+// defined in the asm files
 func GetG() unsafe.Pointer
 
 //go:linkname Fastrand runtime.fastrand
@@ -51,18 +46,6 @@ func goready(goroutinePtr unsafe.Pointer, traceskip int)
 
 //go:linkname gopark runtime.gopark
 func gopark(unlockf func(unsafe.Pointer, unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceEv byte, traceskip int)
-
-func Chanparkcommit(gp unsafe.Pointer, chanLock unsafe.Pointer) bool {
-	// gp.activeStackChans = true
-	// atomic.Store8(&gp.parkingOnChan, 0)
-	// Make sure we unlock after setting activeStackChans and
-	// unsetting parkingOnChan. The moment we unlock chanLock
-	// we risk gp getting readied by a channel operation and
-	// so gp could continue running before everything before
-	// the unlock is visible (even to gp itself).
-	// unlock((*mutex)(chanLock))
-	return true
-}
 
 // Active spinning runtime support.
 // runtime_canSpin reports whether spinning makes sense at the moment.
@@ -135,17 +118,15 @@ func sysFree(v unsafe.Pointer, n uintptr, sysStat unsafe.Pointer)
 //go:linkname sysFreeOS runtime.sysFreeOS
 func sysFreeOS(v unsafe.Pointer, n uintptr)
 
+// custom parking function
 func fast_park(gp unsafe.Pointer) {
 	dropg()
 	casgstatus(gp, _Grunning, _Gwaiting)
 	schedule()
 }
 
-func wait_until_parked(gp unsafe.Pointer) {
-	for Readgstatus(gp) != _Gwaiting {
-		wait()
-	}
-}
+// whether the system has multiple cores or a single core
+var multicore = runtime.NumCPU() > 1
 
 // call ready after ensuring the goroutine is parked
 func safe_ready(gp unsafe.Pointer) {
@@ -159,9 +140,7 @@ func safe_ready(gp unsafe.Pointer) {
 	goready(gp, 1)
 }
 
-// whether the system has multiple cores or a single core
-var multicore = runtime.NumCPU() > 1
-
+// simple wait
 func wait() {
 	if multicore {
 		runtime_doSpin()
