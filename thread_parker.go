@@ -39,20 +39,20 @@ type node struct {
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
 func (tp *ThreadParker) Park() {
-	tp.enqueue()
+	tp.Enqueue(GetG())
 	mcall(fast_park)
 }
 
 func (tp *ThreadParker) ParkPriority() {
 	atomic.AddInt64(&tp.readers, 1)
-	tp.enqueue()
+	tp.Enqueue(GetG())
 	mcall(fast_park)
 	atomic.AddInt64(&tp.readers, -1)
 }
 
 // Ready calls the parked goroutine if any and moves other goroutines up the queue
 func (tp *ThreadParker) Ready() (readied bool) {
-	if gp := tp.dequeue(); gp != nil {
+	if gp := tp.Dequeue(); gp != nil {
 		wait_until_parked(gp)
 		goready(gp, 1)
 		return true
@@ -63,7 +63,7 @@ func (tp *ThreadParker) Ready() (readied bool) {
 func (tp *ThreadParker) ReleasePriority() {
 retry:
 	if atomic.LoadInt64(&tp.readers) > 0 {
-		if gp := tp.dequeue(); gp != nil {
+		if gp := tp.Dequeue(); gp != nil {
 			wait_until_parked(gp)
 			goready(gp, 1)
 			return
@@ -75,9 +75,9 @@ retry:
 }
 
 // enqueue puts the current goroutine pointer at the tail of the list
-func (q *ThreadParker) enqueue() {
+func (q *ThreadParker) Enqueue(gp unsafe.Pointer) {
 	n := nodePool.Get().(*node)
-	n.value, n.next = GetG(), nil
+	n.value, n.next = gp, nil
 	for {
 		tail := load(&q.tail)
 		next := load(&tail.next)
@@ -97,7 +97,7 @@ func (q *ThreadParker) enqueue() {
 
 // dequeue removes and returns the value at the head of the queue
 // It returns nil if the queue is empty
-func (q *ThreadParker) dequeue() unsafe.Pointer {
+func (q *ThreadParker) Dequeue() unsafe.Pointer {
 	for {
 		head := load(&q.head)
 		tail := load(&q.tail)
