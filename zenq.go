@@ -92,7 +92,6 @@ type (
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
-	println(unsafe.Sizeof(n))
 	for idx := range contents {
 		contents[idx].WriteParker = NewThreadParker()
 	}
