@@ -41,6 +41,7 @@ const (
 	StateFullyClosed
 )
 
+// ZenQ selector state enums
 const (
 	// Open for being selected
 	SelectionOpen = iota
@@ -213,47 +214,7 @@ func (self *ZenQ[T]) CloseAsync() {
 	go self.Close()
 }
 
-func (self *ZenQ[T]) selectSender() {
-	atomic.StorePointer(&self.selectFactory.auxThread, GetG())
-	readState := false
-	var data T
-	var queueOpen bool
-
-	for {
-		mcall(fast_park)
-		if !readState {
-			data, queueOpen = self.Read()
-			readState = true
-		}
-
-	selector_dequeue:
-		for {
-			if s := self.selectFactory.waitList.Dequeue(); s != nil {
-				sel := (*Selection)(s)
-				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
-					if !queueOpen {
-						// Signal to the selector that this queue is closed
-						if sel.SignalQueueClosure() {
-							// unblock the selector thread if all queues are closed so that it returns nil, false
-							safe_ready(selThread)
-						}
-						continue
-					}
-					sel.Data = data
-					safe_ready(selThread)
-					readState = false
-					break selector_dequeue
-				} else {
-					continue
-				}
-			} else {
-				break selector_dequeue
-			}
-		}
-		atomic.StoreUint32(&self.selectFactory.state, SelectionOpen)
-	}
-}
-
+// Signal is the mechanism by which a selector notifies this ZenQ's auxillary thread to contest for the selection
 func (self *ZenQ[T]) Signal() uint8 {
 	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionOpen, SelectionRunning) {
 		return 0
@@ -267,7 +228,7 @@ func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
 	self.selectFactory.waitList.Enqueue(unsafe.Pointer(sel))
 }
 
-// IsClosed returns whether the zenq is closed for both reads/writes
+// IsClosed returns whether the zenq is closed for both reads and writes
 func (self *ZenQ[T]) IsClosed() bool {
 	return atomic.LoadUint32(&self.globalState) == StateFullyClosed
 }
@@ -294,6 +255,55 @@ func (self *ZenQ[T]) Dump() {
 		fmt.Printf("%5v : State -> %5v, Item -> %5v", index, self.contents[index].State, self.contents[index].Item)
 	}
 	fmt.Print("\n")
+}
+
+// selectedSender is an auxillary thread which remains parked by default
+// only when a selector sends a signal, it is notified and tries to send back to the selector
+// if it fails, then it parks again and waits for another signal from another selection process
+// since it is parked most of the times, it consumes minimal cpu time making the selection process efficient
+func (self *ZenQ[T]) selectSender() {
+	atomic.StorePointer(&self.selectFactory.auxThread, GetG())
+	readState := false
+	var data T
+	var queueOpen bool
+
+	for {
+		// park by default and wait for signal notification
+		mcall(fast_park)
+		if !readState {
+			data, queueOpen = self.Read()
+			readState = true
+		}
+
+	selector_dequeue:
+		for {
+			if s := self.selectFactory.waitList.Dequeue(); s != nil {
+				sel := (*Selection)(s)
+				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
+					if !queueOpen {
+						// Signal to the selector that this queue is closed
+						if sel.SignalQueueClosure() {
+							// unblock the selector thread if all queues are closed so that it returns nil, false
+							safe_ready(selThread)
+						}
+						sel.DecrementReferenceCount()
+						continue
+					}
+					sel.Data = data
+					safe_ready(selThread)
+					readState = false
+					sel.DecrementReferenceCount()
+					break selector_dequeue
+				} else {
+					sel.DecrementReferenceCount()
+					continue
+				}
+			} else {
+				break selector_dequeue
+			}
+		}
+		atomic.StoreUint32(&self.selectFactory.state, SelectionOpen)
+	}
 }
 
 // returns a default value of any type
