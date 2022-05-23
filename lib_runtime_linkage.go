@@ -6,7 +6,10 @@ import (
 	_ "unsafe"
 )
 
+// Most modern CPUs have cache line size of 64 bytes
 const cacheLinePadSize = 64
+
+type cacheLinePadding struct{ _ [cacheLinePadSize]byte }
 
 // Linking ZenQ with golang internal runtime library to allow usage of scheduling primitives
 // like goready(), mcall() etc to allow low-level scheduling of goroutines
@@ -132,10 +135,8 @@ var multicore = runtime.NumCPU() > 1
 
 // call ready after ensuring the goroutine is parked
 func safe_ready(gp unsafe.Pointer) {
-	iter := 0
 	for Readgstatus(gp) != _Gwaiting {
-		if multicore && runtime_canSpin(iter) {
-			iter++
+		if multicore {
 			runtime_doSpin()
 		} else {
 			runtime.Gosched()
@@ -146,7 +147,7 @@ func safe_ready(gp unsafe.Pointer) {
 
 // simple wait
 func wait() {
-	if multicore && runtime_canSpin(0) {
+	if multicore {
 		runtime_doSpin()
 	} else {
 		runtime.Gosched()

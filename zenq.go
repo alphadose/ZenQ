@@ -58,9 +58,6 @@ const (
 )
 
 type (
-	// Most modern CPUs have cache line size of 64 bytes
-	cacheLinePadding struct{ _ [cacheLinePadSize]byte }
-
 	Slot[T any] struct {
 		State       uint32
 		WriteParker *ThreadParker
@@ -74,23 +71,23 @@ type (
 		waitList *ThreadParker
 	}
 
+	meow [8]uint64
+
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
 		// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
-		// _p1           cacheLinePadding
-		x0            cacheLinePadding
 		writerIndex   uint64
-		x1            [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		_p1           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		readerIndex   uint64
-		x2            [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		_p2           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		globalState   uint32
-		x3            [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
+		_p3           [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		selectFactory SelectFactory
-		x4            [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
+		_p4           [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
-		// x5       cacheLinePadding
+		_p5      cacheLinePadding
 	}
 )
 
@@ -100,6 +97,7 @@ func New[T any]() *ZenQ[T] {
 	for idx := range contents {
 		contents[idx].WriteParker = NewThreadParker()
 	}
+	println(unsafe.Sizeof(contents))
 	zenq := &ZenQ[T]{contents: contents}
 	zenq.selectFactory.waitList = NewThreadParker()
 	go zenq.selectSender()
