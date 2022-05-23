@@ -59,7 +59,7 @@ const (
 
 type (
 	// Most modern CPUs have cache line size of 64 bytes
-	cacheLinePadding [8]uint64
+	cacheLinePadding struct{ _ [cacheLinePadSize]byte }
 
 	Slot[T any] struct {
 		State       uint32
@@ -78,18 +78,19 @@ type (
 	ZenQ[T any] struct {
 		// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
-		_p1           cacheLinePadding
+		// _p1           cacheLinePadding
+		x0            cacheLinePadding
 		writerIndex   uint64
-		_p2           cacheLinePadding
+		x1            [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		readerIndex   uint64
-		_p3           cacheLinePadding
+		x2            [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		globalState   uint32
-		_p4           cacheLinePadding
+		x3            [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		selectFactory SelectFactory
-		_p5           cacheLinePadding
+		x4            [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
-		_p6      cacheLinePadding
+		// x5       cacheLinePadding
 	}
 )
 

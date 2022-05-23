@@ -6,6 +6,8 @@ import (
 	_ "unsafe"
 )
 
+const cacheLinePadSize = 64
+
 // Linking ZenQ with golang internal runtime library to allow usage of scheduling primitives
 // like goready(), mcall() etc to allow low-level scheduling of goroutines
 
