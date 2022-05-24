@@ -17,12 +17,17 @@ type custom2 struct {
 }
 
 const (
-	channelBufferSize     = 1 << 12
-	throughput        int = 6e5 // 600
-	numProducers          = 4
+	channelBufferSize = 1 << 12
+
+	numProducers = 4
 )
 
 var (
+	throughput int
+
+	// input batch size
+	testcases = []int{60, 600, 6e3, 6e5}
+
 	zq1 = zenq.New[int]()
 	zq2 = zenq.New[string]()
 	zq3 = zenq.New[custom1]()
@@ -85,8 +90,16 @@ func chanSelector() {
 }
 
 func main() {
-	chanSelector()
-	zenqSelector()
+	for _, tput := range testcases {
+		throughput = tput
+		fmt.Printf("With Input Batch Size: %d and Num Concurrent Writers: %d\n", throughput, numProducers)
+		fmt.Print("\n")
+
+		// Run tests
+		chanSelector()
+		zenqSelector()
+		fmt.Print("====================================================================\n\n")
+	}
 }
 
 func intProducer1(ctr int) { zq1.Write(ctr) }

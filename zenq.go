@@ -112,6 +112,32 @@ func (self *ZenQ[T]) Write(value T) {
 		return
 	}
 
+	var sel *Selection
+
+	// Try to send directly to selector when possible or else just dequeue unselected references
+	// in order to reduce the burden on the auxillary thread and save cpu time
+direct_send:
+	if s := self.selectFactory.waitList.Dequeue(); s != nil {
+		sel = (*Selection)(s)
+		if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
+			if self.IsClosed() {
+				if sel.SignalQueueClosure() {
+					safe_ready(selThread)
+				}
+				sel.DecrementReferenceCount()
+				return
+			}
+			// direct send to selector
+			sel.Data = value
+			// notify selector
+			safe_ready(selThread)
+			sel.DecrementReferenceCount()
+			return
+		}
+		sel.DecrementReferenceCount()
+		goto direct_send
+	}
+
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
