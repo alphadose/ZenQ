@@ -72,6 +72,7 @@ type (
 		state     uint32
 		// ThreadParker used as a linked list for queueing selector read requests
 		waitList *ThreadParker
+		backlog  unsafe.Pointer
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -172,6 +173,41 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 	return
 }
 
+// ReadLazy reads lazily giving up most of its cpu time to other goroutines
+// Useful in cases when there is a resource crunch in which case it would
+// make sense to trade latency for resource saving
+func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
+	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
+	slotState := &self.contents[idx].State
+	writeParker := self.contents[idx].WriteParker
+
+	// CAS -> change slot_state to busy if slot_state == committed
+	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
+		switch atomic.LoadUint32(slotState) {
+		case SlotBusy:
+			runtime.Gosched()
+		case SlotEmpty:
+			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
+				// rollback the reader index by 1
+				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
+				return
+			}
+			writeParker.Ready()
+			runtime.Gosched()
+		case SlotClosed:
+			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
+				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
+			}
+			return
+		case SlotCommitted:
+			continue
+		}
+	}
+	data, open = self.contents[idx].Item, true
+	atomic.StoreUint32(slotState, SlotEmpty)
+	return
+}
+
 // Close closes the ZenQ for further writes
 // You can only read uptill the last committed write after closing
 // This function will be blocking in case the queue is full
@@ -207,6 +243,14 @@ func (self *ZenQ[T]) Close() {
 // Useful when an user wants to close the channel from a reader end without blocking the thread
 func (self *ZenQ[T]) CloseAsync() {
 	go self.Close()
+}
+
+// ReadFromBackLog tries to read a data from backlog if available
+func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
+	if d := atomic.SwapPointer(&self.selectFactory.backlog, nil); d != nil {
+		data, ok = *((*T)(d)), true
+	}
+	return
 }
 
 // Signal is the mechanism by which a selector notifies this ZenQ's auxillary thread to contest for the selection
@@ -257,10 +301,9 @@ func (self *ZenQ[T]) Dump() {
 // since it is parked most of the times, it consumes minimal cpu time making the selection process efficient
 func (self *ZenQ[T]) selectSender() {
 	atomic.StorePointer(&self.selectFactory.auxThread, GetG())
-	readState := false
 	var data T
-	var queueOpen bool
-
+	readState := false
+	var queueOpen bool = true
 	for {
 		// park by default and wait for Signal() notification from a selection process
 		mcall(fast_park)
@@ -301,6 +344,12 @@ func (self *ZenQ[T]) selectSender() {
 			} else {
 				break selector_dequeue
 			}
+		}
+		// if not selected by any selector, commit data to backlog and wait for next signal
+		// saves a lot of cpu time
+		if readState && queueOpen {
+			var i T = data
+			atomic.StorePointer(&self.selectFactory.backlog, unsafe.Pointer(&i))
 		}
 		atomic.StoreUint32(&self.selectFactory.state, SelectionOpen)
 	}

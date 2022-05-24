@@ -58,6 +58,7 @@ func NewSelectionObject() *Selection {
 type Selectable interface {
 	IsClosed() bool
 	EnqueueSelector(*Selection)
+	ReadFromBackLog() (data any, ok bool)
 	Signal() uint8
 }
 
@@ -75,11 +76,19 @@ func Select(streams ...Selectable) (data any, ok bool) {
 	if numStreams == 0 {
 		return nil, false
 	}
+
+	// best case - optimistic first pass
+	for idx := range waitq {
+		if d, ok := waitq[idx].ReadFromBackLog(); ok {
+			// fmt.Println(d)
+			return d, ok
+		}
+	}
+
 	sel := NewSelectionObject()
 	g := GetG()
 
 	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, numStreams, numStreams+1
-	// defer sel.DecrementReferenceCount()
 
 	var numSignals uint8 = 0
 

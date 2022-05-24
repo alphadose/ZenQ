@@ -18,7 +18,7 @@ type custom2 struct {
 
 const (
 	channelBufferSize     = 1 << 12
-	throughput        int = 6e2 // 600
+	throughput        int = 6e1 // 600
 	numProducers          = 4
 )
 
@@ -48,6 +48,7 @@ func zenqSelector() {
 
 		// Selection occurs here
 		if data, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
+			fmt.Println(data)
 			switch data.(type) {
 			case int:
 				intCtr++
