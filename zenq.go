@@ -29,6 +29,9 @@ const (
 
 	// Masking is faster than division, only works with numbers which are powers of 2
 	indexMask = queueSize - 1
+
+	// add this to uint64 to achieve the same thing as -1 to int64
+	uint64SubtractionConstant = 1<<64 - 1
 )
 
 // ZenQ global state enums
@@ -136,11 +139,6 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
 
-	// change slot_state to empty after this function returns, via defer thereby preventing race conditions
-	// Note:- Although defer adds around 50ns of latency, this is required for preventing race conditions
-	// defer consume(slotState, writeParker)
-	defer atomic.StoreUint32(slotState, SlotEmpty)
-
 	shouldSpin := false
 
 	// CAS -> change slot_state to busy if slot_state == committed
@@ -150,6 +148,8 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			wait()
 		case SlotEmpty:
 			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
+				// rollback the reader index by 1
+				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
 				return
 			}
 			shouldSpin = shouldSpin || writeParker.Ready()
@@ -162,12 +162,14 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
 			}
-			return getDefault[T](), false
+			return
 		case SlotCommitted:
 			continue
 		}
 	}
-	return self.contents[idx].Item, true
+	data, open = self.contents[idx].Item, true
+	atomic.StoreUint32(slotState, SlotEmpty)
+	return
 }
 
 // Close closes the ZenQ for further writes
@@ -302,9 +304,4 @@ func (self *ZenQ[T]) selectSender() {
 		}
 		atomic.StoreUint32(&self.selectFactory.state, SelectionOpen)
 	}
-}
-
-// returns a default value of any type
-func getDefault[T any]() T {
-	return *new(T)
 }

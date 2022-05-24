@@ -79,7 +79,7 @@ func Select(streams ...Selectable) (data any, ok bool) {
 	g := GetG()
 
 	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, numStreams, numStreams+1
-	defer sel.DecrementReferenceCount()
+	// defer sel.DecrementReferenceCount()
 
 	var numSignals uint8 = 0
 
@@ -106,5 +106,8 @@ retry:
 
 	// park and wait for notification
 	mcall(fast_park)
-	return sel.Data, !sel.AllQueuesClosed()
+
+	data, ok = sel.Data, !sel.AllQueuesClosed()
+	sel.DecrementReferenceCount()
+	return
 }

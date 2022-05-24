@@ -164,46 +164,46 @@ down the atomic operations in golang. Under normal circumstances, ZenQ will outp
 Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/simple/*.go
 
 name                                     time/op
-_Chan_NumWriters1_InputSize600-8         23.4µs ± 1%
-_ZenQ_NumWriters1_InputSize600-8         17.9µs ± 2%
-_Chan_NumWriters3_InputSize60000-8       5.50ms ± 2%
-_ZenQ_NumWriters3_InputSize60000-8       2.85ms ± 2%
-_Chan_NumWriters8_InputSize6000000-8      685ms ± 2%
-_ZenQ_NumWriters8_InputSize6000000-8      180ms ± 4%
-_Chan_NumWriters100_InputSize6000000-8    1.59s ± 4%
-_ZenQ_NumWriters100_InputSize6000000-8    206ms ± 6%
-_Chan_NumWriters1000_InputSize7000000-8   1.98s ± 1%
-_ZenQ_NumWriters1000_InputSize7000000-8   300ms ± 7%
-_Chan_Million_Blocking_Writers-8          10.8s ± 2%
-_ZenQ_Million_Blocking_Writers-8          11.8s ± 5%
+_Chan_NumWriters1_InputSize600-8          23.2µs ± 1%
+_ZenQ_NumWriters1_InputSize600-8          17.6µs ± 0%
+_Chan_NumWriters3_InputSize60000-8        5.50ms ± 4%
+_ZenQ_NumWriters3_InputSize60000-8        2.63ms ± 1%
+_Chan_NumWriters8_InputSize6000000-8       684ms ± 2%
+_ZenQ_NumWriters8_InputSize6000000-8       150ms ± 4%
+_Chan_NumWriters100_InputSize6000000-8     1.58s ± 4%
+_ZenQ_NumWriters100_InputSize6000000-8     162ms ± 9%
+_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 1%
+_ZenQ_NumWriters1000_InputSize7000000-8    313ms ±19%
+_Chan_Million_Blocking_Writers-8           10.5s ± 3%
+_ZenQ_Million_Blocking_Writers-8           10.4s ± 6%
 
 name                                     alloc/op
-_Chan_NumWriters1_InputSize600-8          0.00B
-_ZenQ_NumWriters1_InputSize600-8          0.00B
-_Chan_NumWriters3_InputSize60000-8         114B ±53%
-_ZenQ_NumWriters3_InputSize60000-8       29.7B ±105%
-_Chan_NumWriters8_InputSize6000000-8      547B ±362%
-_ZenQ_NumWriters8_InputSize6000000-8      941B ±114%
-_Chan_NumWriters100_InputSize6000000-8   45.8kB ±33%
-_ZenQ_NumWriters100_InputSize6000000-8   6.86kB ±73%
-_Chan_NumWriters1000_InputSize7000000-8   481kB ± 5%
-_ZenQ_NumWriters1000_InputSize7000000-8  42.6kB ±26%
-_Chan_Million_Blocking_Writers-8          553MB ± 0%
-_ZenQ_Million_Blocking_Writers-8         48.0MB ±12%
+_Chan_NumWriters1_InputSize600-8           0.00B     
+_ZenQ_NumWriters1_InputSize600-8           0.00B     
+_Chan_NumWriters3_InputSize60000-8          104B ±54%
+_ZenQ_NumWriters3_InputSize60000-8         22.2B ±91%
+_Chan_NumWriters8_InputSize6000000-8       813B ±307%
+_ZenQ_NumWriters8_InputSize6000000-8       690B ±115%
+_Chan_NumWriters100_InputSize6000000-8    42.6kB ±36%
+_ZenQ_NumWriters100_InputSize6000000-8   5.92kB ±118%
+_Chan_NumWriters1000_InputSize7000000-8    475kB ±11%
+_ZenQ_NumWriters1000_InputSize7000000-8   41.6kB ±34%
+_Chan_Million_Blocking_Writers-8           553MB ± 0%
+_ZenQ_Million_Blocking_Writers-8          47.4MB ± 9%
 
 name                                     allocs/op
-_Chan_NumWriters1_InputSize600-8           0.00
-_ZenQ_NumWriters1_InputSize600-8           0.00
-_Chan_NumWriters3_InputSize60000-8         0.00
-_ZenQ_NumWriters3_InputSize60000-8         0.00
-_Chan_NumWriters8_InputSize6000000-8      1.63 ±268%
-_ZenQ_NumWriters8_InputSize6000000-8      3.87 ±107%
-_Chan_NumWriters100_InputSize6000000-8      162 ±29%
-_ZenQ_NumWriters100_InputSize6000000-8     17.3 ±74%
-_Chan_NumWriters1000_InputSize7000000-8   1.77k ± 3%
-_ZenQ_NumWriters1000_InputSize7000000-8    28.1 ±46%
-_Chan_Million_Blocking_Writers-8          2.00M ± 0%
-_ZenQ_Million_Blocking_Writers-8          1.00M ± 0%
+_Chan_NumWriters1_InputSize600-8            0.00     
+_ZenQ_NumWriters1_InputSize600-8            0.00     
+_Chan_NumWriters3_InputSize60000-8          0.00     
+_ZenQ_NumWriters3_InputSize60000-8          0.00     
+_Chan_NumWriters8_InputSize6000000-8       2.77 ±225%
+_ZenQ_NumWriters8_InputSize6000000-8        2.63 ±52%
+_Chan_NumWriters100_InputSize6000000-8       157 ±17%
+_ZenQ_NumWriters100_InputSize6000000-8     14.3 ±116%
+_Chan_NumWriters1000_InputSize7000000-8    1.77k ± 5%
+_ZenQ_NumWriters1000_InputSize7000000-8     30.3 ±42%
+_Chan_Million_Blocking_Writers-8           2.00M ± 0%
+_ZenQ_Million_Blocking_Writers-8           1.00M ± 0%
 ```
 
 The above results show that ZenQ is more efficient than channels in all 3 metrics i.e `time/op`, `mem_alloc/op` and `num_allocs/op` for the following tested cases:-
