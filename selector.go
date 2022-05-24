@@ -1,7 +1,6 @@
 package zenq
 
 import (
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -80,7 +79,6 @@ func Select(streams ...Selectable) (data any, ok bool) {
 	// best case - optimistic first pass
 	for idx := range waitq {
 		if d, ok := waitq[idx].ReadFromBackLog(); ok {
-			// fmt.Println(d)
 			return d, ok
 		}
 	}
@@ -108,7 +106,7 @@ retry:
 			iter++
 			runtime_doSpin()
 		} else {
-			runtime.Gosched()
+			mcall(gosched_m)
 		}
 		goto retry
 	}

@@ -123,6 +123,9 @@ func sysFree(v unsafe.Pointer, n uintptr, sysStat unsafe.Pointer)
 //go:linkname sysFreeOS runtime.sysFreeOS
 func sysFreeOS(v unsafe.Pointer, n uintptr)
 
+//go:linkname gosched_m runtime.gosched_m
+func gosched_m(gp unsafe.Pointer)
+
 // custom parking function
 func fast_park(gp unsafe.Pointer) {
 	dropg()
@@ -139,7 +142,7 @@ func safe_ready(gp unsafe.Pointer) {
 		if multicore {
 			runtime_doSpin()
 		} else {
-			runtime.Gosched()
+			mcall(gosched_m)
 		}
 	}
 	goready(gp, 1)
@@ -150,7 +153,7 @@ func wait() {
 	if multicore {
 		runtime_doSpin()
 	} else {
-		runtime.Gosched()
+		mcall(gosched_m)
 	}
 }
 

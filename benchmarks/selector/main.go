@@ -18,7 +18,7 @@ type custom2 struct {
 
 const (
 	channelBufferSize     = 1 << 12
-	throughput        int = 6e1 // 600
+	throughput        int = 6e5 // 600
 	numProducers          = 4
 )
 
@@ -40,28 +40,16 @@ func zenqSelector() {
 	go looper(custom1Producer1)
 	go looper(custom2Producer1)
 
-	var intCtr, strCtr, cs1Ctr, cs2Ctr = 0, 0, 0, 0
-	validCount := throughput / numProducers
+	var ctr = 0
 
 	var startTime time.Time = time.Now()
 	for i := 0; i < throughput; i++ {
-
-		// Selection occurs here
-		if data, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
-			fmt.Println(data)
-			switch data.(type) {
-			case int:
-				intCtr++
-			case string:
-				strCtr++
-			case custom1:
-				cs1Ctr++
-			case *custom2:
-				cs2Ctr++
-			}
+		if _, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
+			ctr++
 		}
 	}
-	if intCtr != validCount || strCtr != validCount || cs1Ctr != validCount || cs2Ctr != validCount {
+
+	if ctr != throughput {
 		panic("Data Loss")
 	}
 	fmt.Printf("ZenQ Select Runner completed transfer in: %v\n", time.Since(startTime))
@@ -73,24 +61,24 @@ func chanSelector() {
 	go looper(custom1Producer2)
 	go looper(custom2Producer2)
 
-	var intCtr, strCtr, cs1Ctr, cs2Ctr = 0, 0, 0, 0
-	validCount := throughput / numProducers
+	var ctr = 0
 
 	var startTime time.Time = time.Now()
 	for i := 0; i < throughput; i++ {
 		select {
 		case <-ch1:
-			intCtr++
+			ctr++
 		case <-ch2:
-			strCtr++
+			ctr++
 		case <-ch3:
-			cs1Ctr++
+			ctr++
 		case <-ch4:
-			cs2Ctr++
+			ctr++
 		}
 
 	}
-	if intCtr != validCount || strCtr != validCount || cs1Ctr != validCount || cs2Ctr != validCount {
+
+	if ctr != throughput {
 		panic("Data Loss")
 	}
 	fmt.Printf("Chan Select Runner completed transfer in: %v\n", time.Since(startTime))

@@ -16,7 +16,6 @@ package zenq
 
 import (
 	"fmt"
-	"runtime"
 	"sync/atomic"
 	"unsafe"
 )
@@ -103,7 +102,7 @@ func New[T any]() *ZenQ[T] {
 	zenq.selectFactory.waitList = NewThreadParker()
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
-	runtime.Gosched()
+	mcall(gosched_m)
 	return zenq
 }
 
@@ -121,7 +120,7 @@ func (self *ZenQ[T]) Write(value T) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
-			runtime.Gosched()
+			mcall(gosched_m)
 		case SlotCommitted:
 			writeParker.Park()
 		case SlotEmpty:
@@ -157,7 +156,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			if shouldSpin {
 				wait()
 			} else {
-				runtime.Gosched()
+				mcall(gosched_m)
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
@@ -185,7 +184,7 @@ func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
-			runtime.Gosched()
+			mcall(gosched_m)
 		case SlotEmpty:
 			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 				// rollback the reader index by 1
@@ -193,7 +192,7 @@ func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
 				return
 			}
 			writeParker.Ready()
-			runtime.Gosched()
+			mcall(gosched_m)
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
 				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
@@ -226,7 +225,7 @@ func (self *ZenQ[T]) Close() {
 	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
-			runtime.Gosched()
+			mcall(gosched_m)
 		case SlotCommitted:
 			writeParker.Park()
 		case SlotEmpty:
@@ -308,7 +307,7 @@ func (self *ZenQ[T]) selectSender() {
 		// park by default and wait for Signal() notification from a selection process
 		mcall(fast_park)
 		if !readState {
-			data, queueOpen = self.Read()
+			data, queueOpen = self.ReadLazy()
 			readState = true
 		}
 
