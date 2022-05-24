@@ -102,13 +102,18 @@ retry:
 
 	// might cause deadlock without this case
 	if numSignals == 0 && atomic.LoadPointer(&g) != nil {
+		// wait for some ZenQ to acquire this selector's thread
 		if runtime_canSpin(iter) && multicore {
 			iter++
 			runtime_doSpin()
 		} else {
 			mcall(gosched_m)
 		}
-		goto retry
+		// if still no one has acquired this thread's reference then its dangerous to park
+		// retry and signal all queues
+		if atomic.LoadPointer(&g) != nil {
+			goto retry
+		}
 	}
 
 	// park and wait for notification
