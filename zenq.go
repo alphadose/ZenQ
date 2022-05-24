@@ -107,7 +107,9 @@ func New[T any]() *ZenQ[T] {
 }
 
 // Write writes a value to the queue
-func (self *ZenQ[T]) Write(value T) {
+// It returns whether the queue is currently open for writes or not
+// It might be still open for reads, which can be checked by calling zenq.IsClosed()
+func (self *ZenQ[T]) Write(value T) (queueOpenForWrites bool) {
 	if atomic.LoadUint32(&self.globalState) > StateOpen {
 		return
 	}
@@ -157,10 +159,12 @@ direct_send:
 	}
 	self.contents[idx].Item = value
 	atomic.StoreUint32(slotState, SlotCommitted)
+	queueOpenForWrites = true
+	return
 }
 
 // Read reads a value from the queue, you can once read once per object
-func (self *ZenQ[T]) Read() (data T, open bool) {
+func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
@@ -193,7 +197,7 @@ func (self *ZenQ[T]) Read() (data T, open bool) {
 			continue
 		}
 	}
-	data, open = self.contents[idx].Item, true
+	data, queueOpen = self.contents[idx].Item, true
 	atomic.StoreUint32(slotState, SlotEmpty)
 	return
 }
@@ -238,9 +242,11 @@ func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
 // This function will be blocking in case the queue is full
 // ZenQ is closed from a writer goroutine by design, hence it should always be called
 // from a writer goroutine and never from a reader goroutine which might cause the reader to get blocked and hence deadlock
-func (self *ZenQ[T]) Close() {
+// It returns if the queue was already closed for writes or not
+func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 	// This ensures a ZenQ is closed only once even if this function is called multiple times making this operation safe
 	if !atomic.CompareAndSwapUint32(&self.globalState, StateOpen, StateClosedForWrites) {
+		alreadyClosedForWrites = true
 		return
 	}
 	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
@@ -262,6 +268,7 @@ func (self *ZenQ[T]) Close() {
 	}
 	// Closing commit
 	atomic.StoreUint32(slotState, SlotClosed)
+	return
 }
 
 // CloseAsync closes the channel asynchronously
@@ -269,6 +276,8 @@ func (self *ZenQ[T]) Close() {
 func (self *ZenQ[T]) CloseAsync() {
 	go self.Close()
 }
+
+// The following 4 functions below implement the Selectable interface
 
 // ReadFromBackLog tries to read a data from backlog if available
 func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
