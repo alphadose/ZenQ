@@ -108,7 +108,7 @@ func New[T any]() *ZenQ[T] {
 
 // Write writes a value to the queue
 // It returns whether the queue is currently open for writes or not
-// It might be still open for reads, which can be checked by calling zenq.IsClosed()
+// If not then it might be still open for reads, which can be checked by calling zenq.IsClosed()
 func (self *ZenQ[T]) Write(value T) (queueOpenForWrites bool) {
 	if atomic.LoadUint32(&self.globalState) > StateOpen {
 		return
@@ -169,7 +169,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
 
-	shouldSpin := false
+	shouldWait := false
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
@@ -182,8 +182,8 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
 				return
 			}
-			shouldSpin = shouldSpin || writeParker.Ready()
-			if shouldSpin {
+			shouldWait = shouldWait || writeParker.Ready()
+			if shouldWait {
 				wait()
 			} else {
 				mcall(gosched_m)
@@ -205,6 +205,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 // ReadLazy reads lazily giving up most of its cpu time to other goroutines
 // Useful in cases when there is a resource crunch in which case it would
 // make sense to trade latency for resource saving
+// TODO: make it even lazier by shifting from processor yielding to parking/signalling mechanism to save resources when necessary
 func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
