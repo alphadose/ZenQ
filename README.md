@@ -215,38 +215,38 @@ The above results show that ZenQ is more efficient than channels in all 3 metric
 
 ## Cherry on the Cake
 
-In SPSC mode ZenQ is faster than channels by **90 seconds** in case of input size 6 * 10<sup>8</sup>
+In SPSC mode ZenQ is faster than channels by **100 seconds** in case of input size 6 * 10<sup>8</sup>
 
 ```bash
 ❯ go run benchmarks/simple/main.go
 
 With Input Batch Size: 60 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 37.708µs
-ZenQ Runner completed transfer in: 14.5µs
+Native Channel Runner completed transfer in: 62.75µs
+ZenQ Runner completed transfer in: 19.292µs
 ====================================================================
 
 With Input Batch Size: 600 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 93.167µs
-ZenQ Runner completed transfer in: 55.042µs
+Native Channel Runner completed transfer in: 140.167µs
+ZenQ Runner completed transfer in: 108.417µs
 ====================================================================
 
 With Input Batch Size: 6000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1.2905ms
-ZenQ Runner completed transfer in: 536.083µs
+Native Channel Runner completed transfer in: 1.334416ms
+ZenQ Runner completed transfer in: 607.458µs
 ====================================================================
 
 With Input Batch Size: 6000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1.187596916s
-ZenQ Runner completed transfer in: 201.276ms
+Native Channel Runner completed transfer in: 1.139753542s
+ZenQ Runner completed transfer in: 138.374625ms
 ====================================================================
 
 With Input Batch Size: 600000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1m49.089332916s
-ZenQ Runner completed transfer in: 20.333452417s
+Native Channel Runner completed transfer in: 1m52.511761708s
+ZenQ Runner completed transfer in: 13.175746875s
 ====================================================================
 ```
