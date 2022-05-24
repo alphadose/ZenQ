@@ -83,6 +83,12 @@ func Select(streams ...Selectable) (data any, ok bool) {
 		}
 	}
 
+	// shuffle the queue to avoid deterministic starvation
+	for i := range waitq {
+		j := fastrandn(uint32(i + 1))
+		waitq[i], waitq[j] = waitq[j], waitq[i]
+	}
+
 	sel := NewSelectionObject()
 	g := GetG()
 
@@ -95,6 +101,7 @@ func Select(streams ...Selectable) (data any, ok bool) {
 	}
 
 	iter := 0
+
 retry:
 	for idx := range waitq {
 		numSignals += waitq[idx].Signal()
