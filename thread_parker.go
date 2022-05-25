@@ -21,8 +21,7 @@ type ThreadParker struct {
 // NewThreadParker returns a new thread parker.
 func NewThreadParker() *ThreadParker {
 	n := nodePool.Get().(*node)
-	n.value = nil
-	n.next = nil
+	n.value, n.next = nil, nil
 	ptr := unsafe.Pointer(n)
 	return &ThreadParker{head: ptr, tail: ptr}
 }
@@ -42,16 +41,16 @@ func (tp *ThreadParker) Park() {
 	mcall(fast_park)
 }
 
-// Ready calls the parked goroutine if any and moves other goroutines up the queue
+// Ready calls one parked goroutine from the queue if available
 func (tp *ThreadParker) Ready() (readied bool) {
 	if gp := tp.Dequeue(); gp != nil {
 		safe_ready(gp)
-		return true
+		readied = true
 	}
-	return false
+	return
 }
 
-// enqueue puts the current goroutine pointer at the tail of the list
+// Enqueue inserts a value into the queue
 func (q *ThreadParker) Enqueue(value unsafe.Pointer) {
 	n := nodePool.Get().(*node)
 	n.value, n.next = value, nil
@@ -72,9 +71,9 @@ func (q *ThreadParker) Enqueue(value unsafe.Pointer) {
 	}
 }
 
-// dequeue removes and returns the value at the head of the queue
+// Dequeue removes and returns the value at the head of the queue
 // It returns nil if the queue is empty
-func (q *ThreadParker) Dequeue() unsafe.Pointer {
+func (q *ThreadParker) Dequeue() (value unsafe.Pointer) {
 	for {
 		head := load(&q.head)
 		tail := load(&q.tail)
@@ -82,18 +81,18 @@ func (q *ThreadParker) Dequeue() unsafe.Pointer {
 		if head == load(&q.head) { // are head, tail, and next consistent?
 			if head == tail { // is queue empty or tail falling behind?
 				if next == nil { // is queue empty?
-					return nil
+					return
 				}
 				// tail is falling behind.  try to advance it
 				cas(&q.tail, tail, next)
 			} else {
 				// read value before CAS otherwise another dequeue might free the next node
-				v := next.value
+				value = next.value
 				if cas(&q.head, head, next) {
 					// sysFreeOS(unsafe.Pointer(head), nodeSize)
 					head.value, head.next = nil, nil
 					nodePool.Put(head)
-					return v // Dequeue is done.  return
+					return // Dequeue is done.  return
 				}
 			}
 		}
@@ -105,6 +104,5 @@ func load(p *unsafe.Pointer) (n *node) {
 }
 
 func cas(p *unsafe.Pointer, old, new *node) (ok bool) {
-	return atomic.CompareAndSwapPointer(
-		p, unsafe.Pointer(old), unsafe.Pointer(new))
+	return atomic.CompareAndSwapPointer(p, unsafe.Pointer(old), unsafe.Pointer(new))
 }
