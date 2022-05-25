@@ -134,6 +134,7 @@ direct_send:
 			// notify selector
 			safe_ready(selThread)
 			sel.DecrementReferenceCount()
+			queueOpenForWrites = true
 			return
 		}
 		sel.DecrementReferenceCount()
