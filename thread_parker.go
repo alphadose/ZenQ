@@ -81,7 +81,7 @@ func (q *ThreadParker) Dequeue() (value unsafe.Pointer) {
 		if head == load(&q.head) { // are head, tail, and next consistent?
 			if head == tail { // is queue empty or tail falling behind?
 				if next == nil { // is queue empty?
-					return
+					return nil
 				}
 				// tail is falling behind.  try to advance it
 				cas(&q.tail, tail, next)
