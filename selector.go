@@ -26,12 +26,14 @@ type Selection struct {
 // SignalQueueClosure signals the closure of one ZenQ to the selector thread
 // it returns if all queues were closed or not in which case the calling thread must goready() the selector thread
 func (sel *Selection) SignalQueueClosure() (allQueuesClosed bool) {
-	return atomic.AddInt64(&sel.numQueues, -1) == 0
+	allQueuesClosed = atomic.AddInt64(&sel.numQueues, -1) == 0
+	return
 }
 
 // AllQueuesClosed returns whether all the queues present in selection are closed or not
-func (sel *Selection) AllQueuesClosed() bool {
-	return atomic.LoadInt64(&sel.numQueues) == 0
+func (sel *Selection) AllQueuesClosed() (allClosed bool) {
+	allClosed = atomic.LoadInt64(&sel.numQueues) == 0
+	return
 }
 
 // IncrementReferenceCount does exactly what it says
@@ -49,8 +51,9 @@ func (sel *Selection) DecrementReferenceCount() {
 }
 
 // NewSelectionObject returns a selection object from the memory pool
-func NewSelectionObject() *Selection {
-	return selectionPool.Get().(*Selection)
+func NewSelectionObject() (sel *Selection) {
+	sel = selectionPool.Get().(*Selection)
+	return
 }
 
 // Selectable is an interface for getting selected among many others

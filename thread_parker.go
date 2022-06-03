@@ -100,9 +100,11 @@ func (q *ThreadParker) Dequeue() (value unsafe.Pointer) {
 }
 
 func load(p *unsafe.Pointer) (n *node) {
-	return (*node)(atomic.LoadPointer(p))
+	n = (*node)(atomic.LoadPointer(p))
+	return
 }
 
 func cas(p *unsafe.Pointer, old, new *node) (ok bool) {
-	return atomic.CompareAndSwapPointer(p, unsafe.Pointer(old), unsafe.Pointer(new))
+	ok = atomic.CompareAndSwapPointer(p, unsafe.Pointer(old), unsafe.Pointer(new))
+	return
 }

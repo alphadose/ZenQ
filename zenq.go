@@ -294,12 +294,13 @@ func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
 }
 
 // Signal is the mechanism by which a selector notifies this ZenQ's auxillary thread to contest for the selection
-func (self *ZenQ[T]) Signal() uint8 {
+func (self *ZenQ[T]) Signal() (sig uint8) {
 	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionOpen, SelectionRunning) {
-		return 0
+		return
 	}
 	safe_ready(self.selectFactory.auxThread)
-	return 1
+	sig = 1
+	return
 }
 
 // EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist
@@ -308,8 +309,9 @@ func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
 }
 
 // IsClosed returns whether the zenq is closed for both reads and writes
-func (self *ZenQ[T]) IsClosed() bool {
-	return atomic.LoadUint32(&self.globalState) == StateFullyClosed
+func (self *ZenQ[T]) IsClosed() (closed bool) {
+	closed = atomic.LoadUint32(&self.globalState) == StateFullyClosed
+	return
 }
 
 // Reset resets the queue state
