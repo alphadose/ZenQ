@@ -44,7 +44,7 @@ func (sel *Selection) IncrementReferenceCount() {
 // DecrementReferenceCount decrements the reference count by 1 and puts the object back into the pool if it reaches 0
 func (sel *Selection) DecrementReferenceCount() {
 	if atomic.AddInt64(&sel.referenceCount, -1) == 0 {
-		sel.ThreadPtr, sel.Data, sel.numQueues = nil, nil, 0
+		sel.ThreadPtr, sel.Data = nil, nil
 		// reuse this object in another selection event thereby saving memory
 		sel.collectorPool.Put(sel)
 	}
@@ -76,13 +76,14 @@ func Select(streams ...Selectable) (data any, ok bool) {
 		numStreams++
 	}
 	if numStreams == 0 {
-		return nil, false
+		return
 	}
 
 	// best case - optimistic first pass
 	for idx := 0; idx < numStreams; idx++ {
-		if d, ok := waitq[idx].ReadFromBackLog(); ok {
-			return d, ok
+		if d, exists := waitq[idx].ReadFromBackLog(); exists {
+			data, ok = d, true
+			return
 		}
 	}
 

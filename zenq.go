@@ -190,7 +190,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
-				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
+				atomic.StoreUint32(&self.globalState, StateFullyClosed)
 			}
 			return
 		case SlotCommitted:
@@ -325,7 +325,7 @@ drain:
 			break drain
 		}
 	}
-	atomic.CompareAndSwapUint32(&self.globalState, StateFullyClosed, StateOpen)
+	atomic.StoreUint32(&self.globalState, StateOpen)
 }
 
 // Dump dumps the current queue state
