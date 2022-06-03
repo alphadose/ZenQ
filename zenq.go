@@ -130,11 +130,10 @@ direct_send:
 				return
 			}
 			// direct send to selector
-			sel.Data = value
+			sel.Data, queueOpenForWrites = value, true
 			// notify selector
 			safe_ready(selThread)
 			sel.DecrementReferenceCount()
-			queueOpenForWrites = true
 			return
 		}
 		sel.DecrementReferenceCount()
@@ -158,9 +157,8 @@ direct_send:
 			return
 		}
 	}
-	self.contents[idx].Item = value
+	self.contents[idx].Item, queueOpenForWrites = value, true
 	atomic.StoreUint32(slotState, SlotCommitted)
-	queueOpenForWrites = true
 	return
 }
 
@@ -171,7 +169,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	writeParker := self.contents[idx].WriteParker
 
 	shouldWait := false
-
+	// ctr := 0
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
@@ -183,6 +181,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
 				return
 			}
+			// ctr++
 			shouldWait = shouldWait || writeParker.Ready()
 			if shouldWait {
 				wait()
@@ -198,6 +197,10 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			continue
 		}
 	}
+	// if ctr > 3 {
+	// 	println(ctr)
+	// }
+
 	data, queueOpen = self.contents[idx].Item, true
 	atomic.StoreUint32(slotState, SlotEmpty)
 	return
@@ -207,7 +210,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 // Useful in cases when there is a resource crunch in which case it would
 // make sense to trade latency for resource saving
 // TODO: make it even lazier by shifting from processor yielding to parking/signalling mechanism to save resources when necessary
-func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
+func (self *ZenQ[T]) ReadLazy() (data T, queueOpen bool) {
 	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
 	slotState := &self.contents[idx].State
 	writeParker := self.contents[idx].WriteParker
@@ -216,7 +219,7 @@ func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
 	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
 		switch atomic.LoadUint32(slotState) {
 		case SlotBusy:
-			mcall(gosched_m)
+			wait()
 		case SlotEmpty:
 			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 				// rollback the reader index by 1
@@ -234,8 +237,9 @@ func (self *ZenQ[T]) ReadLazy() (data T, open bool) {
 			continue
 		}
 	}
-	data, open = self.contents[idx].Item, true
+	data, queueOpen = self.contents[idx].Item, true
 	atomic.StoreUint32(slotState, SlotEmpty)
+	writeParker.Ready()
 	return
 }
 

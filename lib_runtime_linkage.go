@@ -58,8 +58,15 @@ func gopark(unlockf func(unsafe.Pointer, unsafe.Pointer) bool, lock unsafe.Point
 func runtime_canSpin(i int) bool
 
 // runtime_doSpin does active spinning.
-//go:linkname runtime_doSpin sync.runtime_doSpin
-func runtime_doSpin()
+// //go:linkname runtime_doSpin sync.runtime_doSpin
+// func runtime_doSpin()
+
+func runtime_doSpin() {
+	spin(400)
+}
+
+//go:linkname osyield runtime.osyield
+func osyield()
 
 //go:linkname runtime_nanotime sync.runtime_nanotime
 func runtime_nanotime() int64
@@ -125,6 +132,12 @@ func sysFreeOS(v unsafe.Pointer, n uintptr)
 
 //go:linkname gosched_m runtime.gosched_m
 func gosched_m(gp unsafe.Pointer)
+
+const busy = 720
+const readied = 100
+
+//go:linkname spin runtime.procyield
+func spin(cycles uint32)
 
 // custom parking function
 func fast_park(gp unsafe.Pointer) {
