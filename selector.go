@@ -64,46 +64,41 @@ type Selectable interface {
 // Select selects a single element out of multiple ZenQs
 // the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
 func Select(streams ...Selectable) (data any, ok bool) {
-	var waitq []Selectable
-	for idx := range streams {
+	waitq, numStreams := make([]Selectable, len(streams), len(streams)), 0
+	for idx := 0; idx < len(streams); idx++ {
 		if streams[idx] == nil || streams[idx].IsClosed() {
 			continue
 		}
-		waitq = append(waitq, streams[idx])
+		waitq[numStreams] = streams[idx]
+		numStreams++
 	}
-	numStreams := int64(len(waitq))
 	if numStreams == 0 {
 		return nil, false
 	}
 
 	// best case - optimistic first pass
-	for idx := range waitq {
+	for idx := 0; idx < numStreams; idx++ {
 		if d, ok := waitq[idx].ReadFromBackLog(); ok {
 			return d, ok
 		}
 	}
 
 	// shuffle the queue to avoid deterministic starvation
-	for i := range waitq {
+	for i := 0; i < numStreams; i++ {
 		j := fastrandn(uint32(i + 1))
 		waitq[i], waitq[j] = waitq[j], waitq[i]
 	}
 
-	sel := NewSelectionObject()
-	g := GetG()
+	sel, g, numSignals, iter := NewSelectionObject(), GetG(), uint8(0), 0
 
-	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, numStreams, numStreams+1
+	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, int64(numStreams), int64(numStreams+1)
 
-	var numSignals uint8 = 0
-
-	for idx := range waitq {
+	for idx := 0; idx < numStreams; idx++ {
 		waitq[idx].EnqueueSelector(sel)
 	}
 
-	iter := 0
-
 retry:
-	for idx := range waitq {
+	for idx := 0; idx < numStreams; idx++ {
 		numSignals += waitq[idx].Signal()
 	}
 
