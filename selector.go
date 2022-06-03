@@ -31,8 +31,8 @@ func (sel *Selection) SignalQueueClosure() (allQueuesClosed bool) {
 }
 
 // AllQueuesClosed returns whether all the queues present in selection are closed or not
-func (sel *Selection) AllQueuesClosed() (allClosed bool) {
-	allClosed = atomic.LoadInt64(&sel.numQueues) == 0
+func (sel *Selection) AllQueuesClosed() (allQueuesClosed bool) {
+	allQueuesClosed = atomic.LoadInt64(&sel.numQueues) == 0
 	return
 }
 
