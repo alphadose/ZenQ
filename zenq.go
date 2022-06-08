@@ -114,13 +114,11 @@ func (self *ZenQ[T]) Write(value T) (queueOpenForWrites bool) {
 		return
 	}
 
-	var sel *Selection
-
 	// Try to send directly to selector when possible or else just dequeue unselected references
 	// in order to reduce the burden on the auxillary thread and save cpu time
 direct_send:
 	if s := self.selectFactory.waitList.Dequeue(); s != nil {
-		sel = (*Selection)(s)
+		sel := (*Selection)(s)
 		if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
 			if self.IsClosed() {
 				if sel.SignalQueueClosure() {
@@ -140,39 +138,35 @@ direct_send:
 		goto direct_send
 	}
 
-	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
-	slotState := &self.contents[idx].State
-	writeParker := self.contents[idx].WriteParker
+	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
-	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		switch atomic.LoadUint32(slotState) {
+	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
+		switch atomic.LoadUint32(&slot.State) {
 		case SlotBusy:
 			mcall(gosched_m)
 		case SlotCommitted:
-			writeParker.Park()
+			slot.WriteParker.Park()
 		case SlotEmpty:
 			continue
 		case SlotClosed:
 			return
 		}
 	}
-	self.contents[idx].Item, queueOpenForWrites = value, true
-	atomic.StoreUint32(slotState, SlotCommitted)
+	slot.Item, queueOpenForWrites = value, true
+	atomic.StoreUint32(&slot.State, SlotCommitted)
 	return
 }
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
-	slotState := &self.contents[idx].State
-	writeParker := self.contents[idx].WriteParker
+	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&indexMask]
 
 	shouldWait := false
 	// ctr := 0
 	// CAS -> change slot_state to busy if slot_state == committed
-	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
-		switch atomic.LoadUint32(slotState) {
+	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
+		switch atomic.LoadUint32(&slot.State) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
@@ -182,14 +176,14 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 				return
 			}
 			// ctr++
-			shouldWait = shouldWait || writeParker.Ready()
+			shouldWait = shouldWait || slot.WriteParker.Ready()
 			if shouldWait {
 				wait()
 			} else {
 				mcall(gosched_m)
 			}
 		case SlotClosed:
-			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
+			if atomic.CompareAndSwapUint32(&slot.State, SlotClosed, SlotEmpty) {
 				atomic.StoreUint32(&self.globalState, StateFullyClosed)
 			}
 			return
@@ -201,8 +195,8 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	// 	println(ctr)
 	// }
 
-	data, queueOpen = self.contents[idx].Item, true
-	atomic.StoreUint32(slotState, SlotEmpty)
+	data, queueOpen = slot.Item, true
+	atomic.StoreUint32(&slot.State, SlotEmpty)
 	return
 }
 
