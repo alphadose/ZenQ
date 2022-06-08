@@ -62,7 +62,7 @@ func runtime_canSpin(i int) bool
 // func runtime_doSpin()
 
 func runtime_doSpin() {
-	spin(400)
+	spin(30)
 }
 
 //go:linkname osyield runtime.osyield
