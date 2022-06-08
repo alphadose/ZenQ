@@ -293,8 +293,10 @@ func (self *ZenQ[T]) Dump() {
 func (self *ZenQ[T]) selectSender() {
 	atomic.StorePointer(&self.selectFactory.auxThread, GetG())
 	var data T
-	readState := false
-	var queueOpen bool = true
+	var sel *Selection
+	var s unsafe.Pointer
+	readState, queueOpen := false, true
+
 	for {
 		// park by default and wait for Signal() notification from a selection process
 		mcall(fast_park)
@@ -307,8 +309,8 @@ func (self *ZenQ[T]) selectSender() {
 		for {
 			// keep dequeuing selectors from waitlist and try to acquire one
 			// if acquired write to selector, ready it and go back to parking state
-			if s := self.selectFactory.waitList.Dequeue(); s != nil {
-				sel := (*Selection)(s)
+			if s = self.selectFactory.waitList.Dequeue(); s != nil {
+				sel = (*Selection)(s)
 				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
 					// implementaion of sending from closed channel to selector mechanism
 					if !queueOpen {
