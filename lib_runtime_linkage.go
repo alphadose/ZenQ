@@ -133,9 +133,6 @@ func sysFreeOS(v unsafe.Pointer, n uintptr)
 //go:linkname gosched_m runtime.gosched_m
 func gosched_m(gp unsafe.Pointer)
 
-const busy = 720
-const readied = 100
-
 //go:linkname spin runtime.procyield
 func spin(cycles uint32)
 
@@ -153,7 +150,7 @@ var multicore = runtime.NumCPU() > 1
 func safe_ready(gp unsafe.Pointer) {
 	for Readgstatus(gp) != _Gwaiting {
 		if multicore {
-			runtime_doSpin()
+			spin(20)
 		} else {
 			mcall(gosched_m)
 		}

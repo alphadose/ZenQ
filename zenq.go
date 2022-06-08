@@ -169,7 +169,6 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			// ctr++
 			shouldWait = shouldWait || writeParker.Ready()
 			if shouldWait && multicore {
 				spin(20)
@@ -189,49 +188,9 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			continue
 		}
 	}
-	// if ctr > 3 {
-	// 	println(ctr)
-	// }
 
 	data, queueOpen = slot.Item, true
 	atomic.StoreUint32(&slot.State, SlotEmpty)
-	return
-}
-
-// ReadLazy reads lazily giving up most of its cpu time to other goroutines
-// Useful in cases when there is a resource crunch in which case it would
-// make sense to trade latency for resource saving
-// TODO: make it even lazier by shifting from processor yielding to parking/signalling mechanism to save resources when necessary
-func (self *ZenQ[T]) ReadLazy() (data T, queueOpen bool) {
-	idx := (atomic.AddUint64(&self.readerIndex, 1) - 1) & indexMask
-	slotState := &self.contents[idx].State
-	writeParker := self.contents[idx].WriteParker
-
-	// CAS -> change slot_state to busy if slot_state == committed
-	for !atomic.CompareAndSwapUint32(slotState, SlotCommitted, SlotBusy) {
-		switch atomic.LoadUint32(slotState) {
-		case SlotBusy:
-			wait()
-		case SlotEmpty:
-			if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
-				// rollback the reader index by 1
-				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
-				return
-			}
-			writeParker.Ready()
-			mcall(gosched_m)
-		case SlotClosed:
-			if atomic.CompareAndSwapUint32(slotState, SlotClosed, SlotEmpty) {
-				atomic.CompareAndSwapUint32(&self.globalState, StateClosedForWrites, StateFullyClosed)
-			}
-			return
-		case SlotCommitted:
-			continue
-		}
-	}
-	data, queueOpen = self.contents[idx].Item, true
-	atomic.StoreUint32(slotState, SlotEmpty)
-	writeParker.Ready()
 	return
 }
 
@@ -342,7 +301,7 @@ func (self *ZenQ[T]) selectSender() {
 		// park by default and wait for Signal() notification from a selection process
 		mcall(fast_park)
 		if !readState {
-			data, queueOpen = self.ReadLazy()
+			data, queueOpen = self.Read()
 			readState = true
 		}
 
