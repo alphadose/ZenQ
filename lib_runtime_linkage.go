@@ -164,7 +164,7 @@ func safe_ready(gp unsafe.Pointer) {
 // simple wait
 func wait() {
 	if multicore {
-		spin(30)
+		spin(20)
 	} else {
 		mcall(gosched_m)
 	}

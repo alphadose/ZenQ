@@ -158,15 +158,10 @@ direct_send:
 	return
 }
 
-const maxbackoff uint64 = 64
-
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&indexMask]
-	writeParker := slot.WriteParker
-	shouldWait := false
-	// waitctr := uint64(0)
-	// ctr := 0
+	writeParker, shouldWait := slot.WriteParker, false
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -177,26 +172,14 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			// ctr++
 			shouldWait = shouldWait || writeParker.Ready()
 			if shouldWait && multicore {
-				spin(30)
-			} else {
+				spin(20)
+			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)
+			} else {
+				// rollback the reader index by 1
+				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
+				return
 			}
-			// if !shouldWait {
-			// 	shouldWait = shouldWait || slot.WriteParker.Ready()
-			// }
-			// if shouldWait || waitctr < maxbackoff {
-			// 	waitctr++
-			// 	// println(waitctr)
-			// 	wait()
-			// } else {
-			// 	if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
-			// 		// rollback the reader index by 1
-			// 		atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
-			// 		return
-			// 	}
-			// 	waitctr, shouldWait = 0, false
-			// 	mcall(gosched_m)
-			// }
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(&slot.State, SlotClosed, SlotEmpty) {
 				atomic.StoreUint32(&self.globalState, StateFullyClosed)
