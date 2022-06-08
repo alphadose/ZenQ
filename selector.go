@@ -109,7 +109,7 @@ retry:
 	// might cause deadlock without this case
 	if numSignals == 0 && atomic.LoadPointer(&g) != nil {
 		// wait for some ZenQ to acquire this selector's thread
-		if runtime_canSpin(iter) && multicore {
+		if runtime_canSpin(iter) {
 			iter++
 			runtime_doSpin()
 		} else {
