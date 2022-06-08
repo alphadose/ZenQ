@@ -158,7 +158,7 @@ direct_send:
 	return
 }
 
-const maxbackoff uint64 = 400
+const maxbackoff uint64 = 64
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
@@ -183,14 +183,12 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 				// println(waitctr)
 				wait()
 			} else {
-				// println(waitctr)
-				waitctr, shouldWait = 0, false
 				if atomic.LoadUint32(&self.globalState) == StateFullyClosed {
 					// rollback the reader index by 1
 					atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
 					return
 				}
-
+				waitctr, shouldWait = 0, false
 				mcall(gosched_m)
 			}
 		case SlotClosed:
