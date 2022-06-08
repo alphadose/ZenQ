@@ -206,17 +206,15 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		alreadyClosedForWrites = true
 		return
 	}
-	idx := (atomic.AddUint64(&self.writerIndex, 1) - 1) & indexMask
-	slotState := &self.contents[idx].State
-	writeParker := self.contents[idx].WriteParker
+	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
-	for !atomic.CompareAndSwapUint32(slotState, SlotEmpty, SlotBusy) {
-		switch atomic.LoadUint32(slotState) {
+	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
+		switch atomic.LoadUint32(&slot.State) {
 		case SlotBusy:
 			mcall(gosched_m)
 		case SlotCommitted:
-			writeParker.Park()
+			slot.WriteParker.Park()
 		case SlotEmpty:
 			continue
 		case SlotClosed:
@@ -224,7 +222,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		}
 	}
 	// Closing commit
-	atomic.StoreUint32(slotState, SlotClosed)
+	atomic.StoreUint32(&slot.State, SlotClosed)
 	return
 }
 
