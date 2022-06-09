@@ -18,8 +18,7 @@ type ThreadParker[T any] struct {
 
 // NewThreadParker returns a new thread parker.
 func NewThreadParker[T any](poolRef *sync.Pool) *ThreadParker[T] {
-	tp := new(ThreadParker[T])
-	n := poolRef.Get().(*parkSpot[T])
+	tp, n := new(ThreadParker[T]), poolRef.Get().(*parkSpot[T])
 	n.threadPtr, n.next = nil, nil
 	tp.head, tp.tail, tp.poolRef = unsafe.Pointer(n), unsafe.Pointer(n), poolRef
 	return tp
@@ -39,13 +38,14 @@ type parkSpot[T any] struct {
 func (tp *ThreadParker[T]) Park(value T) {
 	n := tp.poolRef.Get().(*parkSpot[T])
 	n.threadPtr, n.next, n.value = GetG(), nil, value
+	nextNode := unsafe.Pointer(n)
 	for {
 		tail := atomic.LoadPointer(&tp.tail)
 		next := atomic.LoadPointer(&((*parkSpot[T])(tail)).next)
 		if tail == atomic.LoadPointer(&tp.tail) {
 			if next == nil {
-				if atomic.CompareAndSwapPointer(&((*parkSpot[T])(tail)).next, next, unsafe.Pointer(n)) {
-					atomic.CompareAndSwapPointer(&tp.tail, tail, unsafe.Pointer(n))
+				if atomic.CompareAndSwapPointer(&((*parkSpot[T])(tail)).next, next, nextNode) {
+					atomic.CompareAndSwapPointer(&tp.tail, tail, nextNode)
 					mcall(fast_park)
 					return
 				}
