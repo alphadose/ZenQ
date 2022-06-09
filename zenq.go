@@ -190,7 +190,6 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			continue
 		}
 	}
-
 	data, queueOpen = slot.Item, true
 	atomic.StoreUint32(&slot.State, SlotEmpty)
 	return

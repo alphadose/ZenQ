@@ -70,9 +70,8 @@ func (tp *ThreadParker[T]) Ready() (data T, ok bool) {
 				}
 				atomic.CompareAndSwapPointer(&tp.tail, tail, next)
 			} else {
-				val := (*parkSpot[T])(next)
-				safe_ready(val.threadPtr)
-				data, ok = val.value, true
+				safe_ready((*parkSpot[T])(next).threadPtr)
+				data, ok = (*parkSpot[T])(next).value, true
 				if atomic.CompareAndSwapPointer(&tp.head, head, next) {
 					(*parkSpot[T])(head).threadPtr, (*parkSpot[T])(head).next = nil, nil
 					tp.poolRef.Put((*parkSpot[T])(head))
