@@ -147,7 +147,7 @@ direct_send:
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
 		switch atomic.LoadUint32(&slot.State) {
 		case SlotBusy:
-			mcall(gosched_m)
+			wait()
 		case SlotCommitted:
 			slot.WriteParker.Park(value)
 			return
