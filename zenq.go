@@ -69,9 +69,8 @@ type (
 	SelectFactory struct {
 		auxThread unsafe.Pointer
 		state     uint32
-		// ThreadParker used as a linked list for queueing selector read requests
-		waitList *ThreadParker
-		backlog  unsafe.Pointer
+		waitList  *List
+		backlog   unsafe.Pointer
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -99,7 +98,7 @@ func New[T any]() *ZenQ[T] {
 		contents[idx].WriteParker = NewThreadParker()
 	}
 	zenq := &ZenQ[T]{contents: contents}
-	zenq.selectFactory.waitList = NewThreadParker()
+	zenq.selectFactory.waitList = NewList()
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
 	mcall(gosched_m)
