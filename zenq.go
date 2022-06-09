@@ -16,6 +16,7 @@ package zenq
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"unsafe"
 )
@@ -94,8 +95,9 @@ type (
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
+	parkPool := sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	for idx := range contents {
-		contents[idx].WriteParker = NewThreadParker[T]()
+		contents[idx].WriteParker = NewThreadParker[T](&parkPool)
 	}
 	zenq := &ZenQ[T]{contents: contents}
 	zenq.selectFactory.waitList = NewList()
@@ -162,7 +164,6 @@ direct_send:
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&indexMask]
-	writeParker := slot.WriteParker
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -170,7 +171,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if data, queueOpen = writeParker.Ready(); queueOpen {
+			if data, queueOpen = slot.WriteParker.Ready(); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				wait()

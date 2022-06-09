@@ -13,16 +13,16 @@ type ThreadParker[T any] struct {
 	head unsafe.Pointer
 	tail unsafe.Pointer
 	// memory pool for storing and leasing parkeing spots for goroutines
-	parkPool sync.Pool
+	poolRef *sync.Pool
 }
 
 // NewThreadParker returns a new thread parker.
-func NewThreadParker[T any]() *ThreadParker[T] {
-	parkPool := sync.Pool{New: func() any { return new(parkSpot[T]) }}
-	n := parkPool.Get().(*parkSpot[T])
+func NewThreadParker[T any](poolRef *sync.Pool) *ThreadParker[T] {
+	tp := new(ThreadParker[T])
+	n := poolRef.Get().(*parkSpot[T])
 	n.threadPtr, n.next = nil, nil
-	ptr := unsafe.Pointer(n)
-	return &ThreadParker[T]{head: ptr, tail: ptr, parkPool: parkPool}
+	tp.head, tp.tail, tp.poolRef = unsafe.Pointer(n), unsafe.Pointer(n), poolRef
+	return tp
 }
 
 // a single parked goroutine
@@ -37,7 +37,7 @@ type parkSpot[T any] struct {
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
 func (tp *ThreadParker[T]) Park(value T) {
-	n := tp.parkPool.Get().(*parkSpot[T])
+	n := tp.poolRef.Get().(*parkSpot[T])
 	n.threadPtr, n.next, n.value = GetG(), nil, value
 	for {
 		tail := (*parkSpot[T])(atomic.LoadPointer(&tp.tail))
@@ -73,7 +73,7 @@ func (tp *ThreadParker[T]) Ready() (data T, ok bool) {
 				safe_ready(next.threadPtr)
 				if atomic.CompareAndSwapPointer(&tp.head, unsafe.Pointer(head), unsafe.Pointer(next)) {
 					head.threadPtr, head.next = nil, nil
-					tp.parkPool.Put(head)
+					tp.poolRef.Put(head)
 					return
 				}
 			}
