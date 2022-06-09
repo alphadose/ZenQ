@@ -94,7 +94,6 @@ type (
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
-	InitParkingPool[T]()
 	for idx := range contents {
 		contents[idx].WriteParker = NewThreadParker[T]()
 	}
@@ -171,8 +170,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if d, ok := writeParker.Ready(); ok {
-				data, queueOpen = d, true
+			if data, queueOpen = writeParker.Ready(); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				wait()
