@@ -212,11 +212,8 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
 		switch atomic.LoadUint32(&slot.State) {
-		case SlotBusy:
+		case SlotBusy, SlotCommitted:
 			mcall(gosched_m)
-		case SlotCommitted:
-			slot.WriteParker.Park(*new(T))
-			return
 		case SlotEmpty:
 			continue
 		case SlotClosed:
