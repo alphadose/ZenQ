@@ -62,7 +62,7 @@ const (
 type (
 	Slot[T any] struct {
 		State       uint32
-		WriteParker *ThreadParker
+		WriteParker *ThreadParker[T]
 		Item        T
 	}
 
@@ -94,8 +94,9 @@ type (
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
+	InitParkingPool[T]()
 	for idx := range contents {
-		contents[idx].WriteParker = NewThreadParker()
+		contents[idx].WriteParker = NewThreadParker[T]()
 	}
 	zenq := &ZenQ[T]{contents: contents}
 	zenq.selectFactory.waitList = NewList()
@@ -145,7 +146,9 @@ direct_send:
 		case SlotBusy:
 			mcall(gosched_m)
 		case SlotCommitted:
-			slot.WriteParker.Park()
+			slot.WriteParker.Park(value)
+			queueOpenForWrites = true
+			return
 		case SlotEmpty:
 			continue
 		case SlotClosed:
@@ -160,7 +163,7 @@ direct_send:
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&indexMask]
-	writeParker, shouldWait := slot.WriteParker, false
+	writeParker := slot.WriteParker
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -168,13 +171,13 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			shouldWait = shouldWait || writeParker.Ready()
-			if shouldWait && multicore {
-				spin(20)
+			if d, ok := writeParker.Ready(); ok {
+				data, queueOpen = d, true
+				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
-				mcall(gosched_m)
+				wait()
 			} else {
-				// rollback the reader index by 1
+				// queue is closed, rollback the reader index by 1
 				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
 				return
 			}
@@ -213,7 +216,8 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		case SlotBusy:
 			mcall(gosched_m)
 		case SlotCommitted:
-			slot.WriteParker.Park()
+			slot.WriteParker.Park(*new(T))
+			return
 		case SlotEmpty:
 			continue
 		case SlotClosed:

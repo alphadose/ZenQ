@@ -7,88 +7,81 @@ import (
 )
 
 // global memory pool for storing and leasing parkeing spots for goroutines
-var parkPool = sync.Pool{New: func() any { return new(parkSpot) }}
+// var parkPool = sync.Pool{New: func() any { return new(parkSpot) }}
+var parkPool sync.Pool
 
 // ThreadParker is a data-structure used for sleeping and waking up goroutines on user call
 // useful for saving up resources by parking excess goroutines and pre-empt them when required with minimal latency overhead
 // Uses the same lock-free linked list implementation as in `list.go`
-type ThreadParker struct {
+type ThreadParker[T any] struct {
 	head unsafe.Pointer
 	tail unsafe.Pointer
 }
 
+func InitParkingPool[T any]() {
+	parkPool = sync.Pool{New: func() any { return new(parkSpot[T]) }}
+}
+
 // NewThreadParker returns a new thread parker.
-func NewThreadParker() *ThreadParker {
-	n := parkPool.Get().(*parkSpot)
-	n.threadPtr, n.value, n.next = nil, nil, nil
+func NewThreadParker[T any]() *ThreadParker[T] {
+	n := parkPool.Get().(*parkSpot[T])
+	n.threadPtr, n.next = nil, nil
 	ptr := unsafe.Pointer(n)
-	return &ThreadParker{head: ptr, tail: ptr}
+	return &ThreadParker[T]{head: ptr, tail: ptr}
 }
 
 // a single parked goroutine
-type parkSpot struct {
+type parkSpot[T any] struct {
 	threadPtr unsafe.Pointer
-	value     unsafe.Pointer
 	next      unsafe.Pointer
+	value     T
 }
 
 // Park parks the current calling goroutine
 // This keeps only one parked goroutine in state at all times
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
-func (tp *ThreadParker) Park() {
-	n := parkPool.Get().(*parkSpot)
-	n.threadPtr, n.value, n.next = GetG(), nil, nil
-enqueue:
+func (tp *ThreadParker[T]) Park(value T) {
+	n := parkPool.Get().(*parkSpot[T])
+	n.threadPtr, n.next, n.value = GetG(), nil, value
 	for {
-		tail := load_spot(&tp.tail)
-		next := load_spot(&tail.next)
-		if tail == load_spot(&tp.tail) {
+		tail := (*parkSpot[T])(atomic.LoadPointer(&tp.tail))
+		next := (*parkSpot[T])(atomic.LoadPointer(&tail.next))
+		if tail == (*parkSpot[T])(atomic.LoadPointer(&tp.tail)) {
 			if next == nil {
-				if cas_spot(&tail.next, next, n) {
-					cas_spot(&tp.tail, tail, n)
-					break enqueue
+				if atomic.CompareAndSwapPointer(&tail.next, unsafe.Pointer(next), unsafe.Pointer(n)) {
+					atomic.CompareAndSwapPointer(&tp.tail, unsafe.Pointer(tail), unsafe.Pointer(n))
+					mcall(fast_park)
+					return
 				}
 			} else {
-				cas_spot(&tp.tail, tail, next)
+				atomic.CompareAndSwapPointer(&tp.tail, unsafe.Pointer(tail), unsafe.Pointer(next))
 			}
 		}
 	}
-	mcall(fast_park)
 }
 
 // Ready calls one parked goroutine from the queue if available
-func (tp *ThreadParker) Ready() (readied bool) {
-dequeue:
+func (tp *ThreadParker[T]) Ready() (data T, ok bool) {
 	for {
-		head := load_spot(&tp.head)
-		tail := load_spot(&tp.tail)
-		next := load_spot(&head.next)
-		if head == load_spot(&tp.head) {
+		head := (*parkSpot[T])(atomic.LoadPointer(&tp.head))
+		tail := (*parkSpot[T])(atomic.LoadPointer(&tp.tail))
+		next := (*parkSpot[T])(atomic.LoadPointer(&head.next))
+		if head == (*parkSpot[T])(atomic.LoadPointer(&tp.head)) {
 			if head == tail {
 				if next == nil {
-					break dequeue
+					return
 				}
-				cas_spot(&tp.tail, tail, next)
+				atomic.CompareAndSwapPointer(&tp.tail, unsafe.Pointer(tail), unsafe.Pointer(next))
 			} else {
+				data, ok = next.value, true
 				safe_ready(next.threadPtr)
-				if cas_spot(&tp.head, head, next) {
-					head.threadPtr, head.value, head.next, readied = nil, nil, nil, true
+				if atomic.CompareAndSwapPointer(&tp.head, unsafe.Pointer(head), unsafe.Pointer(next)) {
+					head.threadPtr, head.next = nil, nil
 					parkPool.Put(head)
 					return
 				}
 			}
 		}
 	}
-	return
-}
-
-func load_spot(p *unsafe.Pointer) (n *parkSpot) {
-	n = (*parkSpot)(atomic.LoadPointer(p))
-	return
-}
-
-func cas_spot(p *unsafe.Pointer, old, new *parkSpot) (ok bool) {
-	ok = atomic.CompareAndSwapPointer(p, unsafe.Pointer(old), unsafe.Pointer(new))
-	return
 }
