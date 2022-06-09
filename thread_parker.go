@@ -40,17 +40,17 @@ func (tp *ThreadParker[T]) Park(value T) {
 	n := tp.poolRef.Get().(*parkSpot[T])
 	n.threadPtr, n.next, n.value = GetG(), nil, value
 	for {
-		tail := (*parkSpot[T])(atomic.LoadPointer(&tp.tail))
-		next := (*parkSpot[T])(atomic.LoadPointer(&tail.next))
-		if tail == (*parkSpot[T])(atomic.LoadPointer(&tp.tail)) {
+		tail := atomic.LoadPointer(&tp.tail)
+		next := atomic.LoadPointer(&((*parkSpot[T])(tail)).next)
+		if tail == atomic.LoadPointer(&tp.tail) {
 			if next == nil {
-				if atomic.CompareAndSwapPointer(&tail.next, unsafe.Pointer(next), unsafe.Pointer(n)) {
-					atomic.CompareAndSwapPointer(&tp.tail, unsafe.Pointer(tail), unsafe.Pointer(n))
+				if atomic.CompareAndSwapPointer(&((*parkSpot[T])(tail)).next, next, unsafe.Pointer(n)) {
+					atomic.CompareAndSwapPointer(&tp.tail, tail, unsafe.Pointer(n))
 					mcall(fast_park)
 					return
 				}
 			} else {
-				atomic.CompareAndSwapPointer(&tp.tail, unsafe.Pointer(tail), unsafe.Pointer(next))
+				atomic.CompareAndSwapPointer(&tp.tail, tail, next)
 			}
 		}
 	}
@@ -58,22 +58,24 @@ func (tp *ThreadParker[T]) Park(value T) {
 
 // Ready calls one parked goroutine from the queue if available
 func (tp *ThreadParker[T]) Ready() (data T, ok bool) {
+	// Ready calls one parked goroutine from the queue if available
 	for {
-		head := (*parkSpot[T])(atomic.LoadPointer(&tp.head))
-		tail := (*parkSpot[T])(atomic.LoadPointer(&tp.tail))
-		next := (*parkSpot[T])(atomic.LoadPointer(&head.next))
-		if head == (*parkSpot[T])(atomic.LoadPointer(&tp.head)) {
+		head := atomic.LoadPointer(&tp.head)
+		tail := atomic.LoadPointer(&tp.tail)
+		next := atomic.LoadPointer(&((*parkSpot[T])(head)).next)
+		if head == atomic.LoadPointer(&tp.head) {
 			if head == tail {
 				if next == nil {
 					return
 				}
-				atomic.CompareAndSwapPointer(&tp.tail, unsafe.Pointer(tail), unsafe.Pointer(next))
+				atomic.CompareAndSwapPointer(&tp.tail, tail, next)
 			} else {
-				safe_ready(next.threadPtr)
-				data, ok = next.value, true
-				if atomic.CompareAndSwapPointer(&tp.head, unsafe.Pointer(head), unsafe.Pointer(next)) {
-					head.threadPtr, head.next = nil, nil
-					tp.poolRef.Put(head)
+				val := (*parkSpot[T])(next)
+				safe_ready(val.threadPtr)
+				data, ok = val.value, true
+				if atomic.CompareAndSwapPointer(&tp.head, head, next) {
+					(*parkSpot[T])(head).threadPtr, (*parkSpot[T])(head).next = nil, nil
+					tp.poolRef.Put((*parkSpot[T])(head))
 					return
 				}
 			}
