@@ -95,6 +95,7 @@ type (
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
+	// memory pool for storing and leasing parking spots for goroutines
 	parkPool := sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	for idx := range contents {
 		contents[idx].WriteParker = NewThreadParker[T](&parkPool)
@@ -110,8 +111,9 @@ func New[T any]() *ZenQ[T] {
 // Write writes a value to the queue
 // It returns whether the queue is currently open for writes or not
 // If not then it might be still open for reads, which can be checked by calling zenq.IsClosed()
-func (self *ZenQ[T]) Write(value T) (queueOpenForWrites bool) {
+func (self *ZenQ[T]) Write(value T) (queueClosedForWrites bool) {
 	if atomic.LoadUint32(&self.globalState) > StateOpen {
+		queueClosedForWrites = true
 		return
 	}
 
@@ -129,7 +131,7 @@ direct_send:
 				return
 			}
 			// direct send to selector
-			sel.Data, queueOpenForWrites = value, true
+			sel.Data = value
 			// notify selector
 			safe_ready(selThread)
 			sel.DecrementReferenceCount()
@@ -148,7 +150,6 @@ direct_send:
 			mcall(gosched_m)
 		case SlotCommitted:
 			slot.WriteParker.Park(value)
-			queueOpenForWrites = true
 			return
 		case SlotEmpty:
 			continue
@@ -156,7 +157,7 @@ direct_send:
 			return
 		}
 	}
-	slot.Item, queueOpenForWrites = value, true
+	slot.Item = value
 	atomic.StoreUint32(&slot.State, SlotCommitted)
 	return
 }
