@@ -164,7 +164,6 @@ down the atomic operations in golang. Under normal circumstances, ZenQ will outp
 Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/simple/*.go
 
 name                                     time/op
-name                                     time/op
 _Chan_NumWriters1_InputSize600-8          23.4µs ± 1%
 _ZenQ_NumWriters1_InputSize600-8          38.3µs ± 1%
 _Chan_NumWriters3_InputSize60000-8        5.54ms ± 6%
