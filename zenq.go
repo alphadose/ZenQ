@@ -16,6 +16,7 @@ package zenq
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"unsafe"
 )
@@ -62,16 +63,15 @@ const (
 type (
 	Slot[T any] struct {
 		State       uint32
-		WriteParker *ThreadParker
+		WriteParker *ThreadParker[T]
 		Item        T
 	}
 
 	SelectFactory struct {
 		auxThread unsafe.Pointer
 		state     uint32
-		// ThreadParker used as a linked list for queueing selector read requests
-		waitList *ThreadParker
-		backlog  unsafe.Pointer
+		waitList  *List
+		backlog   unsafe.Pointer
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -89,17 +89,22 @@ type (
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
 		_p5      cacheLinePadding
+		// memory pool for storing and leasing parking spots for goroutines
+		sync.Pool
 	}
 )
 
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
+	parkPool := sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	for idx := range contents {
-		contents[idx].WriteParker = NewThreadParker()
+		n := parkPool.Get().(*parkSpot[T])
+		n.threadPtr, n.next = nil, nil
+		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
-	zenq := &ZenQ[T]{contents: contents}
-	zenq.selectFactory.waitList = NewThreadParker()
+	zenq := &ZenQ[T]{contents: contents, Pool: parkPool}
+	zenq.selectFactory.waitList = NewList()
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
 	mcall(gosched_m)
@@ -109,8 +114,9 @@ func New[T any]() *ZenQ[T] {
 // Write writes a value to the queue
 // It returns whether the queue is currently open for writes or not
 // If not then it might be still open for reads, which can be checked by calling zenq.IsClosed()
-func (self *ZenQ[T]) Write(value T) (queueOpenForWrites bool) {
+func (self *ZenQ[T]) Write(value T) (queueClosedForWrites bool) {
 	if atomic.LoadUint32(&self.globalState) > StateOpen {
+		queueClosedForWrites = true
 		return
 	}
 
@@ -128,7 +134,7 @@ direct_send:
 				return
 			}
 			// direct send to selector
-			sel.Data, queueOpenForWrites = value, true
+			sel.Data = value
 			// notify selector
 			safe_ready(selThread)
 			sel.DecrementReferenceCount()
@@ -144,16 +150,19 @@ direct_send:
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
 		switch atomic.LoadUint32(&slot.State) {
 		case SlotBusy:
-			mcall(gosched_m)
+			wait()
 		case SlotCommitted:
-			slot.WriteParker.Park()
+			n := self.Get().(*parkSpot[T])
+			n.threadPtr, n.next, n.value = GetG(), nil, value
+			slot.WriteParker.Park(unsafe.Pointer(n))
+			return
 		case SlotEmpty:
 			continue
 		case SlotClosed:
 			return
 		}
 	}
-	slot.Item, queueOpenForWrites = value, true
+	slot.Item = value
 	atomic.StoreUint32(&slot.State, SlotCommitted)
 	return
 }
@@ -161,7 +170,6 @@ direct_send:
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&indexMask]
-	writeParker, shouldWait := slot.WriteParker, false
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -169,13 +177,12 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			shouldWait = shouldWait || writeParker.Ready()
-			if shouldWait && multicore {
-				spin(20)
+			if data, queueOpen = slot.WriteParker.Ready(&self.Pool); queueOpen {
+				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
-				mcall(gosched_m)
+				wait()
 			} else {
-				// rollback the reader index by 1
+				// queue is closed, rollback the reader index by 1
 				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
 				return
 			}
@@ -188,7 +195,6 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			continue
 		}
 	}
-
 	data, queueOpen = slot.Item, true
 	atomic.StoreUint32(&slot.State, SlotEmpty)
 	return
@@ -211,10 +217,8 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
 		switch atomic.LoadUint32(&slot.State) {
-		case SlotBusy:
+		case SlotBusy, SlotCommitted:
 			mcall(gosched_m)
-		case SlotCommitted:
-			slot.WriteParker.Park()
 		case SlotEmpty:
 			continue
 		case SlotClosed:
