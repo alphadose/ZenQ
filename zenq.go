@@ -89,7 +89,7 @@ type (
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
 		_p5      cacheLinePadding
-		// memory pool for storing and leasing parking spots for
+		// memory pool for storing and leasing parking spots for goroutines
 		sync.Pool
 	}
 )
