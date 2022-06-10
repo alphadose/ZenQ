@@ -86,21 +86,24 @@ type (
 		_p3           [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		selectFactory SelectFactory
 		_p4           [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
+		parkPool      *sync.Pool
+		_p5           [cacheLinePadSize - unsafe.Sizeof(new(sync.Pool))]byte
 		// arrays have faster access speed than slices for single elements
 		contents [queueSize]Slot[T]
-		_p5      cacheLinePadding
+		_p6      cacheLinePadding
 	}
 )
 
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
-	// memory pool for storing and leasing parking spots for goroutines
 	parkPool := sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	for idx := range contents {
-		contents[idx].WriteParker = NewThreadParker[T](&parkPool)
+		n := parkPool.Get().(*parkSpot[T])
+		n.threadPtr, n.next = nil, nil
+		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
-	zenq := &ZenQ[T]{contents: contents}
+	zenq := &ZenQ[T]{contents: contents, parkPool: &parkPool}
 	zenq.selectFactory.waitList = NewList()
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
@@ -149,7 +152,9 @@ direct_send:
 		case SlotBusy:
 			wait()
 		case SlotCommitted:
-			slot.WriteParker.Park(value)
+			n := self.parkPool.Get().(*parkSpot[T])
+			n.threadPtr, n.next, n.value = GetG(), nil, value
+			slot.WriteParker.Park(unsafe.Pointer(n))
 			return
 		case SlotEmpty:
 			continue
@@ -172,7 +177,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if data, queueOpen = slot.WriteParker.Ready(); queueOpen {
+			if data, queueOpen = slot.WriteParker.Ready(self.parkPool); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				wait()
