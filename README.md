@@ -164,46 +164,47 @@ down the atomic operations in golang. Under normal circumstances, ZenQ will outp
 Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/simple/*.go
 
 name                                     time/op
-_Chan_NumWriters1_InputSize600-8         23.3µs ± 1%
-_ZenQ_NumWriters1_InputSize600-8         17.7µs ± 1%
-_Chan_NumWriters3_InputSize60000-8       5.50ms ± 1%
-_ZenQ_NumWriters3_InputSize60000-8       2.62ms ± 4%
-_Chan_NumWriters8_InputSize6000000-8      686ms ± 1%
-_ZenQ_NumWriters8_InputSize6000000-8      153ms ± 3%
-_Chan_NumWriters100_InputSize6000000-8    1.59s ± 1%
-_ZenQ_NumWriters100_InputSize6000000-8    166ms ± 7%
-_Chan_NumWriters1000_InputSize7000000-8   1.98s ± 1%
-_ZenQ_NumWriters1000_InputSize7000000-8   318ms ±12%
-_Chan_Million_Blocking_Writers-8          10.8s ± 2%
-_ZenQ_Million_Blocking_Writers-8          10.3s ± 5%
+name                                     time/op
+_Chan_NumWriters1_InputSize600-8          23.4µs ± 1%
+_ZenQ_NumWriters1_InputSize600-8          38.3µs ± 1%
+_Chan_NumWriters3_InputSize60000-8        5.54ms ± 6%
+_ZenQ_NumWriters3_InputSize60000-8        2.62ms ± 2%
+_Chan_NumWriters8_InputSize6000000-8       680ms ± 3%
+_ZenQ_NumWriters8_InputSize6000000-8       254ms ± 4%
+_Chan_NumWriters100_InputSize6000000-8     1.58s ± 5%
+_ZenQ_NumWriters100_InputSize6000000-8     292ms ± 3%
+_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 1%
+_ZenQ_NumWriters1000_InputSize7000000-8    408ms ± 3%
+_Chan_Million_Blocking_Writers-8           10.6s ± 2%
+_ZenQ_Million_Blocking_Writers-8           1.98s ±26%
 
 name                                     alloc/op
-_Chan_NumWriters1_InputSize600-8          0.00B
-_ZenQ_NumWriters1_InputSize600-8          0.00B
-_Chan_NumWriters3_InputSize60000-8        97.2B ±60%
-_ZenQ_NumWriters3_InputSize60000-8       28.5B ±121%
-_Chan_NumWriters8_InputSize6000000-8      922B ±297%
-_ZenQ_NumWriters8_InputSize6000000-8       860B ±87%
-_Chan_NumWriters100_InputSize6000000-8   43.8kB ±39%
-_ZenQ_NumWriters100_InputSize6000000-8   6.18kB ±69%
-_Chan_NumWriters1000_InputSize7000000-8   472kB ±11%
-_ZenQ_NumWriters1000_InputSize7000000-8  38.9kB ±47%
-_Chan_Million_Blocking_Writers-8          553MB ± 0%
-_ZenQ_Million_Blocking_Writers-8         46.3MB ±10%
+_Chan_NumWriters1_InputSize600-8           0.00B
+_ZenQ_NumWriters1_InputSize600-8           0.00B
+_Chan_NumWriters3_InputSize60000-8        17.4B ±267%
+_ZenQ_NumWriters3_InputSize60000-8        15.6B ±291%
+_Chan_NumWriters8_InputSize6000000-8       132B ±118%
+_ZenQ_NumWriters8_InputSize6000000-8       248B ±227%
+_Chan_NumWriters100_InputSize6000000-8    35.7kB ±45%
+_ZenQ_NumWriters100_InputSize6000000-8   2.74kB ±181%
+_Chan_NumWriters1000_InputSize7000000-8    476kB ± 7%
+_ZenQ_NumWriters1000_InputSize7000000-8    949B ±265%
+_Chan_Million_Blocking_Writers-8           553MB ± 0%
+_ZenQ_Million_Blocking_Writers-8           122MB ± 5%
 
 name                                     allocs/op
-_Chan_NumWriters1_InputSize600-8           0.00
-_ZenQ_NumWriters1_InputSize600-8           0.00
-_Chan_NumWriters3_InputSize60000-8         0.00
-_ZenQ_NumWriters3_InputSize60000-8         0.00
-_Chan_NumWriters8_InputSize6000000-8      2.83 ±182%
-_ZenQ_NumWriters8_InputSize6000000-8       3.25 ±54%
-_Chan_NumWriters100_InputSize6000000-8      161 ±24%
-_ZenQ_NumWriters100_InputSize6000000-8     15.0 ±67%
-_Chan_NumWriters1000_InputSize7000000-8   1.76k ± 5%
-_ZenQ_NumWriters1000_InputSize7000000-8    26.2 ±37%
-_Chan_Million_Blocking_Writers-8          2.00M ± 0%
-_ZenQ_Million_Blocking_Writers-8          1.00M ± 0%
+_Chan_NumWriters1_InputSize600-8            0.00
+_ZenQ_NumWriters1_InputSize600-8            0.00
+_Chan_NumWriters3_InputSize60000-8          0.00
+_ZenQ_NumWriters3_InputSize60000-8          0.00
+_Chan_NumWriters8_InputSize6000000-8       1.30 ±131%
+_ZenQ_NumWriters8_InputSize6000000-8       1.57 ±219%
+_Chan_NumWriters100_InputSize6000000-8       139 ±33%
+_ZenQ_NumWriters100_InputSize6000000-8     6.14 ±193%
+_Chan_NumWriters1000_InputSize7000000-8    1.76k ± 5%
+_ZenQ_NumWriters1000_InputSize7000000-8    2.70 ±344%
+_Chan_Million_Blocking_Writers-8           2.00M ± 0%
+_ZenQ_Million_Blocking_Writers-8           1.00M ± 0%
 ```
 
 The above results show that ZenQ is more efficient than channels in all 3 metrics i.e `time/op`, `mem_alloc/op` and `num_allocs/op` for the following tested cases:-
@@ -215,38 +216,38 @@ The above results show that ZenQ is more efficient than channels in all 3 metric
 
 ## Cherry on the Cake
 
-In SPSC mode ZenQ is faster than channels by **100 seconds** in case of input size 6 * 10<sup>8</sup>
+In SPSC mode ZenQ is faster than channels by **78 seconds** in case of input size 6 * 10<sup>8</sup>
 
 ```bash
 ❯ go run benchmarks/simple/main.go
 
 With Input Batch Size: 60 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 62.75µs
-ZenQ Runner completed transfer in: 19.292µs
+Native Channel Runner completed transfer in: 33.417µs
+ZenQ Runner completed transfer in: 19.667µs
 ====================================================================
 
 With Input Batch Size: 600 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 140.167µs
-ZenQ Runner completed transfer in: 108.417µs
+Native Channel Runner completed transfer in: 86.5µs
+ZenQ Runner completed transfer in: 54µs
 ====================================================================
 
 With Input Batch Size: 6000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1.334416ms
-ZenQ Runner completed transfer in: 607.458µs
+Native Channel Runner completed transfer in: 1.144208ms
+ZenQ Runner completed transfer in: 842.083µs
 ====================================================================
 
 With Input Batch Size: 6000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1.139753542s
-ZenQ Runner completed transfer in: 138.374625ms
+Native Channel Runner completed transfer in: 1.122868875s
+ZenQ Runner completed transfer in: 377.636334ms
 ====================================================================
 
 With Input Batch Size: 600000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1m52.511761708s
-ZenQ Runner completed transfer in: 13.175746875s
+Native Channel Runner completed transfer in: 1m51.694234834s
+ZenQ Runner completed transfer in: 33.276190167s
 ====================================================================
 ```
