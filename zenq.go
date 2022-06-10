@@ -180,7 +180,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			if data, queueOpen = slot.WriteParker.Ready(&self.Pool); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
-				wait()
+				mcall(gosched_m)
 			} else {
 				// queue is closed, rollback the reader index by 1
 				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
