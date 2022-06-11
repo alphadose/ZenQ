@@ -1,0 +1,480 @@
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   47522	     23269 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67122	     17724 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     229	   5237547 ns/op	      71 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     422	   2597956 ns/op	      54 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 705826167 ns/op	      52 B/op	       1 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 245418033 ns/op	     416 B/op	       1 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1508132292 ns/op	   42912 B/op	     152 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 325520917 ns/op	    2104 B/op	       5 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1847349709 ns/op	  497792 B/op	    1815 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 403021819 ns/op	     312 B/op	       1 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	10485683208 ns/op	552804640 B/op	 1997162 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1841937209 ns/op	123988952 B/op	  998871 allocs/op
+PASS
+ok  	command-line-arguments	31.966s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   45210	     23354 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67604	     17897 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     220	   5486204 ns/op	     130 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2598372 ns/op	       3 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 687768812 ns/op	    1856 B/op	       6 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 238246458 ns/op	     166 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1603654834 ns/op	   32512 B/op	     132 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 292726719 ns/op	    1352 B/op	       3 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1971287083 ns/op	  492320 B/op	    1798 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 406154111 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	9206018250 ns/op	552821728 B/op	 1997210 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1722709875 ns/op	123956416 B/op	  998786 allocs/op
+PASS
+ok  	command-line-arguments	30.458s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   45931	     23596 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67555	     17853 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     237	   5124158 ns/op	      92 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2621504 ns/op	      60 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 656528688 ns/op	     144 B/op	       1 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 243433900 ns/op	     416 B/op	       1 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1574506209 ns/op	   45216 B/op	     156 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 290673948 ns/op	    1792 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1973617250 ns/op	  470528 B/op	    1761 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 403105028 ns/op	    4578 B/op	      11 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	10432154208 ns/op	552790944 B/op	 1997176 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1866390167 ns/op	120840312 B/op	  998864 allocs/op
+PASS
+ok  	command-line-arguments	32.506s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   46207	     23228 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67736	     17678 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     216	   5537854 ns/op	      93 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     459	   2597111 ns/op	      43 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 686216834 ns/op	     816 B/op	       3 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 245269950 ns/op	     332 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1594733333 ns/op	   41376 B/op	     136 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 302071219 ns/op	    2808 B/op	       6 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1974044750 ns/op	  470496 B/op	    1754 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 403056639 ns/op	    8736 B/op	      21 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	9933667417 ns/op	552818272 B/op	 1997244 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1810151416 ns/op	120809312 B/op	  998792 allocs/op
+PASS
+ok  	command-line-arguments	31.364s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   46276	     23177 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67809	     17708 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     226	   5172202 ns/op	     146 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     459	   2600673 ns/op	       4 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 703768916 ns/op	     192 B/op	       2 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 237040225 ns/op	    1000 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1513236541 ns/op	   41344 B/op	     144 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 291835729 ns/op	    5594 B/op	      13 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1842355667 ns/op	  485728 B/op	    1796 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 414756458 ns/op	    2082 B/op	       5 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	8767986834 ns/op	552795392 B/op	 1997189 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1768759541 ns/op	125023936 B/op	  998840 allocs/op
+PASS
+ok  	command-line-arguments	29.915s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49960	     23217 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67905	     17638 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     212	   5617512 ns/op	     137 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2598727 ns/op	       7 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 686003375 ns/op	     144 B/op	       1 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 239525042 ns/op	     499 B/op	       1 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1598404417 ns/op	   37832 B/op	     145 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 293241469 ns/op	    2784 B/op	       6 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1973302125 ns/op	  479232 B/op	    1775 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 400549542 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6426497500 ns/op	552835232 B/op	 1997344 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1786101250 ns/op	122899976 B/op	  998772 allocs/op
+PASS
+ok  	command-line-arguments	27.591s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49810	     23232 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67862	     17657 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     216	   5522939 ns/op	     109 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     424	   2599869 ns/op	      25 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 684143042 ns/op	    1136 B/op	       3 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 250753625 ns/op	     998 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1593831250 ns/op	   48224 B/op	     164 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 295827229 ns/op	     496 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1965124583 ns/op	  477216 B/op	    1754 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 406329014 ns/op	   11832 B/op	      10 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	8870878875 ns/op	552788384 B/op	 1997136 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1869103000 ns/op	123978464 B/op	  998846 allocs/op
+PASS
+ok  	command-line-arguments	30.104s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49662	     23302 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67765	     17699 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     219	   5455774 ns/op	      85 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2595937 ns/op	      45 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 686730708 ns/op	    1344 B/op	       4 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       4	 255986844 ns/op	    1568 B/op	       6 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1595092542 ns/op	   38208 B/op	     158 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 295728323 ns/op	    5096 B/op	      12 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1974840750 ns/op	  494944 B/op	    1802 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 400592042 ns/op	     280 B/op	       1 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	9325637583 ns/op	552802016 B/op	 1997208 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1806096083 ns/op	125015384 B/op	  998817 allocs/op
+PASS
+ok  	command-line-arguments	29.296s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   50203	     23255 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67855	     17672 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     216	   5511975 ns/op	      73 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     422	   2598723 ns/op	      24 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 689678250 ns/op	      48 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 243373625 ns/op	     584 B/op	       1 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1601944000 ns/op	   38944 B/op	     159 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 291083177 ns/op	    2810 B/op	       7 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1956557666 ns/op	  491072 B/op	    1795 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 403308792 ns/op	     661 B/op	       1 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	8110330583 ns/op	552801024 B/op	 1997211 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1699946792 ns/op	120835240 B/op	  998846 allocs/op
+PASS
+ok  	command-line-arguments	29.092s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   48181	     23527 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67845	     17652 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     218	   5549236 ns/op	      67 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2646685 ns/op	      34 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 688473396 ns/op	     400 B/op	       2 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 243386008 ns/op	     832 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1604205209 ns/op	   45440 B/op	     145 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 293477833 ns/op	      24 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1978213167 ns/op	  481888 B/op	    1776 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 403358528 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6559640709 ns/op	552810688 B/op	 1997195 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1662036667 ns/op	121863600 B/op	  998803 allocs/op
+PASS
+ok  	command-line-arguments	27.709s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   46201	     23297 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67555	     17575 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     216	   5585018 ns/op	      88 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2598093 ns/op	      31 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 687153688 ns/op	    2592 B/op	       7 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 237323092 ns/op	     166 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1580131792 ns/op	   47552 B/op	     167 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 295293906 ns/op	    3560 B/op	       8 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1975413250 ns/op	  483776 B/op	    1769 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 408368139 ns/op	     693 B/op	       1 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6413140000 ns/op	552795584 B/op	 1997151 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1770129834 ns/op	124001968 B/op	  998899 allocs/op
+PASS
+ok  	command-line-arguments	27.807s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   45667	     23312 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67617	     17695 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     219	   5447732 ns/op	      71 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2596173 ns/op	      40 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 680233271 ns/op	    1552 B/op	       4 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 243080617 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1601457833 ns/op	   49760 B/op	     170 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 299932656 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1969881000 ns/op	  466720 B/op	    1738 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 400647375 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	5668056292 ns/op	552799584 B/op	 1997206 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1583542792 ns/op	121895720 B/op	  998877 allocs/op
+PASS
+ok  	command-line-arguments	26.883s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49819	     23262 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67840	     17827 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     217	   5549931 ns/op	      81 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2611283 ns/op	      14 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 686494583 ns/op	      48 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 239523817 ns/op	     332 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1609321208 ns/op	   43584 B/op	     174 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 293433927 ns/op	    1768 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1974067542 ns/op	  514656 B/op	    1844 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 400049458 ns/op	     661 B/op	       1 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	9313893166 ns/op	552788160 B/op	 1997077 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1622800000 ns/op	125009896 B/op	  998808 allocs/op
+PASS
+ok  	command-line-arguments	30.318s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49148	     23233 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67827	     17638 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     217	   5501620 ns/op	      69 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     460	   2597509 ns/op	       6 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 684281416 ns/op	     720 B/op	       2 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 236713092 ns/op	     908 B/op	       1 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1604263333 ns/op	   46856 B/op	     169 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 292982698 ns/op	    2832 B/op	       7 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1971517791 ns/op	  483488 B/op	    1786 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 399899319 ns/op	    5965 B/op	      14 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6659747875 ns/op	552811744 B/op	 1997236 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1679611959 ns/op	123957464 B/op	  998871 allocs/op
+PASS
+ok  	command-line-arguments	27.669s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   46063	     23248 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67940	     17640 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     217	   5545257 ns/op	     130 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2596118 ns/op	      25 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 691207562 ns/op	     880 B/op	       2 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 240364742 ns/op	     499 B/op	       1 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1589693333 ns/op	   29472 B/op	     127 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 293858938 ns/op	    6968 B/op	      16 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1974551166 ns/op	  470208 B/op	    1751 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 407110069 ns/op	       2 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	5381643333 ns/op	552825408 B/op	 1997265 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1323370792 ns/op	121859240 B/op	  998787 allocs/op
+PASS
+ok  	command-line-arguments	26.196s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   50362	     23305 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   68480	     17656 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     210	   5530214 ns/op	      90 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     451	   2631985 ns/op	      45 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 681081146 ns/op	    1024 B/op	       4 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 243122375 ns/op	    1747 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1760011584 ns/op	   46496 B/op	     156 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 304474010 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1980961958 ns/op	  493888 B/op	    1811 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 422336583 ns/op	      32 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	10602504125 ns/op	552827200 B/op	 1997217 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1961318084 ns/op	122903304 B/op	  998780 allocs/op
+PASS
+ok  	command-line-arguments	32.225s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   46142	     23293 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67249	     17752 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     212	   5760181 ns/op	     146 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2597368 ns/op	       8 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 738242000 ns/op	    1184 B/op	       3 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       4	 258940208 ns/op	    1048 B/op	       5 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1510381167 ns/op	   42784 B/op	     159 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 294036938 ns/op	    1874 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1846310792 ns/op	  488768 B/op	    1771 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 406866653 ns/op	     661 B/op	       1 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	10044564167 ns/op	552809312 B/op	 1997184 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1760655042 ns/op	125024368 B/op	  998843 allocs/op
+PASS
+ok  	command-line-arguments	30.150s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   45868	     23365 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67539	     17786 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     229	   5316524 ns/op	      99 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     460	   2595200 ns/op	      20 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 712953020 ns/op	    1440 B/op	       5 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 246591775 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1512796458 ns/op	   44160 B/op	     160 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 297755948 ns/op	    5144 B/op	      12 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1847665584 ns/op	  483168 B/op	    1776 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 411532986 ns/op	      34 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	8919496125 ns/op	552806464 B/op	 1997221 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1667816333 ns/op	125026152 B/op	  998844 allocs/op
+PASS
+ok  	command-line-arguments	30.854s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   45789	     23365 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67486	     17708 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     218	   5525250 ns/op	      72 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2596213 ns/op	      32 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 690273208 ns/op	    1184 B/op	       4 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 241784592 ns/op	       1 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1590772292 ns/op	   41440 B/op	     155 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 296621844 ns/op	    3120 B/op	       7 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1974752125 ns/op	  479008 B/op	    1786 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 407195736 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6443482792 ns/op	552783200 B/op	 1997102 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1548360084 ns/op	121878328 B/op	  998804 allocs/op
+PASS
+ok  	command-line-arguments	27.581s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49777	     23209 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67510	     17727 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     218	   5462704 ns/op	     138 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     460	   2596379 ns/op	      16 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 687323479 ns/op	    1876 B/op	       5 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 253521917 ns/op	    1497 B/op	       3 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1611112459 ns/op	   48768 B/op	     163 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 302558802 ns/op	    4888 B/op	      11 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1972009625 ns/op	  490400 B/op	    1798 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 410535958 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	7318677500 ns/op	552824832 B/op	 1997219 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1599083208 ns/op	124981968 B/op	  998741 allocs/op
+PASS
+ok  	command-line-arguments	28.380s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   45585	     23731 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67638	     17747 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     238	   5044730 ns/op	     130 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2650233 ns/op	      25 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 660926000 ns/op	    1648 B/op	       5 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 239819408 ns/op	     755 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1588325542 ns/op	   50208 B/op	     168 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 293146281 ns/op	    2704 B/op	       6 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1974516625 ns/op	  483232 B/op	    1780 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 402286292 ns/op	      34 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6999417292 ns/op	552829088 B/op	 1997330 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1591704667 ns/op	127634008 B/op	  998811 allocs/op
+PASS
+ok  	command-line-arguments	28.031s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   50073	     23274 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67840	     17710 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     219	   5419798 ns/op	      73 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2594071 ns/op	      25 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 681310208 ns/op	    2112 B/op	       7 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 245445742 ns/op	    1248 B/op	       3 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1596256125 ns/op	   50880 B/op	     175 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 296090958 ns/op	    5120 B/op	      12 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1968905208 ns/op	  469792 B/op	    1740 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 404515750 ns/op	       2 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6504496583 ns/op	552820352 B/op	 1997209 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1620846708 ns/op	127116560 B/op	  998831 allocs/op
+PASS
+ok  	command-line-arguments	27.600s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49920	     23353 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67674	     17760 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     220	   5485204 ns/op	     166 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     404	   2595740 ns/op	      16 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 687238416 ns/op	      48 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 243892583 ns/op	     249 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1598552958 ns/op	   30112 B/op	     117 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 294831635 ns/op	    4394 B/op	      11 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1984712625 ns/op	  479072 B/op	    1760 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 399110167 ns/op	      32 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6591059625 ns/op	552801088 B/op	 1997175 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1681967208 ns/op	121901032 B/op	  998892 allocs/op
+PASS
+ok  	command-line-arguments	27.616s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49868	     23313 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67617	     17600 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     218	   5512246 ns/op	      73 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2652198 ns/op	      48 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 686253750 ns/op	     144 B/op	       1 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 241749025 ns/op	      83 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1587638958 ns/op	   50976 B/op	     166 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 293281979 ns/op	     808 B/op	       1 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1971706209 ns/op	  491776 B/op	    1819 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 400599847 ns/op	    1664 B/op	       4 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	9028132708 ns/op	552809312 B/op	 1997214 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1689317625 ns/op	123986464 B/op	  998866 allocs/op
+PASS
+ok  	command-line-arguments	30.063s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49904	     23262 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   68359	     17679 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     235	   5094961 ns/op	      73 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     460	   2595799 ns/op	      37 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 660929020 ns/op	     304 B/op	       1 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 237968350 ns/op	    1081 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1604217250 ns/op	   51520 B/op	     175 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 292647750 ns/op	    1872 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1974410917 ns/op	  475328 B/op	    1771 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 404832014 ns/op	    5237 B/op	      12 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6423288834 ns/op	552797632 B/op	 1997189 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1419428375 ns/op	125037072 B/op	  998869 allocs/op
+PASS
+ok  	command-line-arguments	27.078s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   50037	     23308 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67791	     17640 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     218	   5526729 ns/op	      83 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2602085 ns/op	      47 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 691811188 ns/op	     192 B/op	       2 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 246263933 ns/op	    1748 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1613244250 ns/op	   47392 B/op	     172 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 299401125 ns/op	    3952 B/op	       9 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1971402500 ns/op	  487136 B/op	    1784 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 397193875 ns/op	      32 B/op	       0 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	9707580917 ns/op	552823488 B/op	 1997255 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1713405000 ns/op	127110176 B/op	  998813 allocs/op
+PASS
+ok  	command-line-arguments	30.842s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   50023	     23202 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67716	     17657 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     235	   5102928 ns/op	      88 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2599162 ns/op	      25 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 664655812 ns/op	    1552 B/op	       4 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 240499517 ns/op	     470 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1600629875 ns/op	   25664 B/op	     114 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 294390073 ns/op	    2624 B/op	       6 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1972161291 ns/op	  482112 B/op	    1775 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 404848222 ns/op	    1386 B/op	       3 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6695711708 ns/op	552821632 B/op	 1997209 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1773066250 ns/op	121890768 B/op	  998866 allocs/op
+PASS
+ok  	command-line-arguments	28.535s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   50180	     23289 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67834	     17636 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     217	   5512248 ns/op	     125 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2596169 ns/op	      20 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 686502896 ns/op	    1920 B/op	       5 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 242322533 ns/op	     832 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1607025375 ns/op	   51008 B/op	     183 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 298918375 ns/op	    2914 B/op	       7 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1975989250 ns/op	  481088 B/op	    1771 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 400557778 ns/op	     834 B/op	       2 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6626682334 ns/op	552807904 B/op	 1997206 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1553255083 ns/op	121903440 B/op	  998898 allocs/op
+PASS
+ok  	command-line-arguments	27.580s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   49923	     23278 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   66412	     17646 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     216	   5501610 ns/op	     132 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     462	   2596502 ns/op	      44 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 687100854 ns/op	      48 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 241127967 ns/op	     448 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1572372917 ns/op	   45280 B/op	     160 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 293267833 ns/op	    1768 B/op	       4 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1973119709 ns/op	  502464 B/op	    1837 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 402158542 ns/op	     418 B/op	       1 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	6685581042 ns/op	552809248 B/op	 1997270 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1666295042 ns/op	121883992 B/op	  998853 allocs/op
+PASS
+ok  	command-line-arguments	27.699s
+goos: darwin
+goarch: arm64
+Benchmark_Chan_NumWriters1_InputSize600-8          	   43312	     23516 ns/op	       0 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters1_InputSize600-8          	   67430	     17684 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters3_InputSize60000-8        	     234	   5103686 ns/op	      95 B/op	       0 allocs/op
+Benchmark_ZenQ_NumWriters3_InputSize60000-8        	     460	   2646819 ns/op	      21 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters8_InputSize6000000-8      	       2	 659143125 ns/op	     144 B/op	       1 allocs/op
+Benchmark_ZenQ_NumWriters8_InputSize6000000-8      	       5	 244288142 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Chan_NumWriters100_InputSize6000000-8    	       1	1594237875 ns/op	   37920 B/op	     155 allocs/op
+Benchmark_ZenQ_NumWriters100_InputSize6000000-8    	       4	 288556177 ns/op	    1224 B/op	       2 allocs/op
+Benchmark_Chan_NumWriters1000_InputSize7000000-8   	       1	1959059458 ns/op	  468896 B/op	    1744 allocs/op
+Benchmark_ZenQ_NumWriters1000_InputSize7000000-8   	       3	 401594000 ns/op	    4021 B/op	       9 allocs/op
+Benchmark_Chan_Million_Blocking_Writers-8          	       1	10359128250 ns/op	552796768 B/op	 1997150 allocs/op
+Benchmark_ZenQ_Million_Blocking_Writers-8          	       1	1829831042 ns/op	121877304 B/op	  998837 allocs/op
+PASS
+ok  	command-line-arguments	34.100s
