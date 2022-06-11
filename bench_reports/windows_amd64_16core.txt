@@ -1,7 +1,6 @@
 goos: windows
 goarch: amd64
 cpu: AMD Ryzen 7 5800H with Radeon Graphics
-16 cores
 
 name                                      time/op
 _Chan_NumWriters1_InputSize600-16         24.5µs ± 5%

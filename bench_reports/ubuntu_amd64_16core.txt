@@ -1,0 +1,45 @@
+goos: linux
+goarch: amd64
+cpu: AMD Ryzen 7 5800H with Radeon Graphics
+
+name                                      time/op
+_Chan_NumWriters1_InputSize600-16         23.4µs ± 4%
+_ZenQ_NumWriters1_InputSize600-16         33.1µs ± 4%
+_Chan_NumWriters3_InputSize60000-16       2.59ms ± 3%
+_ZenQ_NumWriters3_InputSize60000-16       1.79ms ± 1%
+_Chan_NumWriters8_InputSize6000000-16      334ms ± 6%
+_ZenQ_NumWriters8_InputSize6000000-16      162ms ± 4%
+_Chan_NumWriters100_InputSize6000000-16    515ms ± 6%
+_ZenQ_NumWriters100_InputSize6000000-16    170ms ± 3%
+_Chan_NumWriters1000_InputSize7000000-16   1.76s ± 3%
+_ZenQ_NumWriters1000_InputSize7000000-16   273ms ± 2%
+_Chan_Million_Blocking_Writers-16          4.52s ± 5%
+_ZenQ_Million_Blocking_Writers-16          1.27s ±14%
+
+name                                      alloc/op
+_Chan_NumWriters1_InputSize600-16          0.00B
+_ZenQ_NumWriters1_InputSize600-16          0.00B
+_Chan_NumWriters3_InputSize60000-16        91.7B ±51%
+_ZenQ_NumWriters3_InputSize60000-16        4.00B ± 0%
+_Chan_NumWriters8_InputSize6000000-16      487B ±275%
+_ZenQ_NumWriters8_InputSize6000000-16      879B ±111%
+_Chan_NumWriters100_InputSize6000000-16   30.0kB ±47%
+_ZenQ_NumWriters100_InputSize6000000-16   23.2kB ±54%
+_Chan_NumWriters1000_InputSize7000000-16   463kB ±11%
+_ZenQ_NumWriters1000_InputSize7000000-16   129kB ±10%
+_Chan_Million_Blocking_Writers-16          553MB ± 0%
+_ZenQ_Million_Blocking_Writers-16          124MB ± 3%
+
+name                                      allocs/op
+_Chan_NumWriters1_InputSize600-16           0.00
+_ZenQ_NumWriters1_InputSize600-16           0.00
+_Chan_NumWriters3_InputSize60000-16         0.00
+_ZenQ_NumWriters3_InputSize60000-16         0.00
+_Chan_NumWriters8_InputSize6000000-16      1.57 ±219%
+_ZenQ_NumWriters8_InputSize6000000-16       3.48 ±44%
+_Chan_NumWriters100_InputSize6000000-16     87.8 ±40%
+_ZenQ_NumWriters100_InputSize6000000-16     54.3 ±54%
+_Chan_NumWriters1000_InputSize7000000-16   1.67k ± 9%
+_ZenQ_NumWriters1000_InputSize7000000-16    63.5 ±10%
+_Chan_Million_Blocking_Writers-16          2.00M ± 0%
+_ZenQ_Million_Blocking_Writers-16          1.00M ± 0%
