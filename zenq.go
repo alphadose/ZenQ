@@ -96,15 +96,16 @@ type (
 
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any]() *ZenQ[T] {
-	var contents [queueSize]Slot[T]
-	parkPool := sync.Pool{New: func() any { return new(parkSpot[T]) }}
+	var (
+		contents [queueSize]Slot[T]
+		parkPool = sync.Pool{New: func() any { return new(parkSpot[T]) }}
+	)
 	for idx := 0; idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
 		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
-	zenq := &ZenQ[T]{contents: contents, Pool: parkPool}
-	zenq.selectFactory.waitList = NewList()
+	zenq := &ZenQ[T]{contents: contents, Pool: parkPool, selectFactory: SelectFactory{waitList: NewList()}}
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
 	mcall(gosched_m)
