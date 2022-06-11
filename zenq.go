@@ -90,7 +90,7 @@ type (
 		contents [queueSize]Slot[T]
 		_p5      cacheLinePadding
 		// memory pool for storing and leasing parking spots for goroutines
-		sync.Pool
+		*sync.Pool
 	}
 )
 
@@ -105,7 +105,7 @@ func New[T any]() *ZenQ[T] {
 		n.threadPtr, n.next = nil, nil
 		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
-	zenq := &ZenQ[T]{contents: contents, Pool: parkPool, selectFactory: SelectFactory{waitList: NewList()}}
+	zenq := &ZenQ[T]{contents: contents, Pool: &parkPool, selectFactory: SelectFactory{waitList: NewList()}}
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
 	mcall(gosched_m)
@@ -178,7 +178,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if data, queueOpen = slot.WriteParker.Ready(&self.Pool); queueOpen {
+			if data, queueOpen = slot.WriteParker.Ready(self.Pool); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)
