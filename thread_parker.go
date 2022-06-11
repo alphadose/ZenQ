@@ -16,9 +16,7 @@ type ThreadParker[T any] struct {
 
 // NewThreadParker returns a new thread parker.
 func NewThreadParker[T any](n unsafe.Pointer) *ThreadParker[T] {
-	tp := new(ThreadParker[T])
-	tp.head, tp.tail = n, n
-	return tp
+	return &ThreadParker[T]{head: n, tail: n}
 }
 
 // a single parked goroutine
