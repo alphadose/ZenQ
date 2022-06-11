@@ -98,7 +98,7 @@ type (
 func New[T any]() *ZenQ[T] {
 	var contents [queueSize]Slot[T]
 	parkPool := sync.Pool{New: func() any { return new(parkSpot[T]) }}
-	for idx := range contents {
+	for idx := 0; idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
 		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
