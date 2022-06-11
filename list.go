@@ -18,11 +18,11 @@ type List struct {
 }
 
 // NewList returns a new list
-func NewList() *List {
+func NewList() List {
 	n := nodePool.Get().(*node)
 	n.value, n.next = nil, nil
 	ptr := unsafe.Pointer(n)
-	return &List{head: ptr, tail: ptr}
+	return List{head: ptr, tail: ptr}
 }
 
 // a single node in the linked list

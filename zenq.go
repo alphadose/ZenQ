@@ -70,7 +70,7 @@ type (
 	SelectFactory struct {
 		auxThread unsafe.Pointer
 		state     uint32
-		waitList  *List
+		waitList  List
 		backlog   unsafe.Pointer
 	}
 
