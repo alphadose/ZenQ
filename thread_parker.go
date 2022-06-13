@@ -21,8 +21,8 @@ func NewThreadParker[T any](n unsafe.Pointer) *ThreadParker[T] {
 
 // a single parked goroutine
 type parkSpot[T any] struct {
-	threadPtr unsafe.Pointer
 	next      unsafe.Pointer
+	threadPtr unsafe.Pointer
 	value     T
 }
 

@@ -27,8 +27,8 @@ func NewList() List {
 
 // a single node in the linked list
 type node struct {
-	value unsafe.Pointer
 	next  unsafe.Pointer
+	value unsafe.Pointer
 }
 
 // Enqueue inserts a value into the list
