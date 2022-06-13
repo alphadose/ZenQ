@@ -156,6 +156,7 @@ direct_send:
 			n := self.Get().(*parkSpot[T])
 			n.threadPtr, n.next, n.value = GetG(), nil, value
 			slot.WriteParker.Park(unsafe.Pointer(n))
+			mcall(fast_park)
 			return
 		case SlotEmpty:
 			continue

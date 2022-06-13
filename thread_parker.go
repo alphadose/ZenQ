@@ -38,7 +38,6 @@ func (tp *ThreadParker[T]) Park(nextNode unsafe.Pointer) {
 			if next == nil {
 				if atomic.CompareAndSwapPointer(&((*parkSpot[T])(tail)).next, next, nextNode) {
 					atomic.CompareAndSwapPointer(&tp.tail, tail, nextNode)
-					mcall(fast_park)
 					return
 				}
 			} else {
