@@ -4,10 +4,11 @@ import (
 	"runtime"
 	"unsafe"
 	_ "unsafe"
+
+	"github.com/alphadose/zenq/constants"
 )
 
-// Most modern CPUs have cache line size of 64 bytes
-const cacheLinePadSize = 64
+const cacheLinePadSize = constants.CacheLinePadSize
 
 type cacheLinePadding struct{ _ [cacheLinePadSize]byte }
 
