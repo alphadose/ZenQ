@@ -15,11 +15,13 @@ type custom2 struct {
 	gamma int
 }
 
+const size = 100
+
 var (
-	zq1 = zenq.New[int]()
-	zq2 = zenq.New[string]()
-	zq3 = zenq.New[custom1]()
-	zq4 = zenq.New[*custom2]()
+	zq1 = zenq.New[int](size)
+	zq2 = zenq.New[string](size)
+	zq3 = zenq.New[custom1](size)
+	zq4 = zenq.New[*custom2](size)
 )
 
 func main() {

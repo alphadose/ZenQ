@@ -30,7 +30,7 @@ func NewPayload() *Payload {
 }
 
 const (
-	channelBufferSize = 1 << 12
+	bufferSize = 1 << 12
 )
 
 var (
@@ -46,10 +46,10 @@ var (
 	numConcurrentWriters uint64 = 1
 
 	// native channel
-	ch chan Payload = make(chan Payload, channelBufferSize)
+	ch chan Payload = make(chan Payload, bufferSize)
 
 	// ZenQ
-	zq *zenq.ZenQ[Payload] = zenq.New[Payload]()
+	zq *zenq.ZenQ[Payload] = zenq.New[Payload](bufferSize)
 )
 
 func validatePayload(param Payload) {

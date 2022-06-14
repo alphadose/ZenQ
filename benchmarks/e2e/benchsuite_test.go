@@ -13,7 +13,7 @@ type Chan[T any] struct {
 }
 
 func NewChan[T any]() Chan[T] {
-	return Chan[T]{ch: make(chan T, zenq.QueueSize)}
+	return Chan[T]{ch: make(chan T, bufferSize)}
 }
 
 func (ch Chan[T]) Read() T   { return <-ch.ch }
@@ -177,7 +177,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 	ctor := zenq.New[int]
 
 	b.Run("Single", func(b *testing.B) {
-		q := ctor()
+		q := ctor(bufferSize)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			q.Write(i)
@@ -187,7 +187,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 
 	b.Run("Uncontended/x100", func(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
-			q := ctor()
+			q := ctor(bufferSize)
 			for pb.Next() {
 				for i := 0; i < 100; i++ {
 					q.Write(i)
@@ -198,7 +198,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 	})
 
 	b.Run("Contended/x100", func(b *testing.B) {
-		q := ctor()
+		q := ctor(bufferSize)
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				for i := 0; i < 100; i++ {
@@ -213,7 +213,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 		const P = 1000
 		qs := [P]*Queue{}
 		for i := range qs {
-			qs[i] = ctor()
+			qs[i] = ctor(bufferSize)
 		}
 
 		b.ResetTimer()
@@ -240,7 +240,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 	})
 
 	b.Run("ProducerConsumer/x1", func(b *testing.B) {
-		q := ctor()
+		q := ctor(bufferSize)
 		b.ResetTimer()
 		var wg sync.WaitGroup
 		wg.Add(2)
@@ -264,7 +264,7 @@ func BenchmarkZenq_Suite(b *testing.B) {
 	})
 
 	b.Run("ProducerConsumer/x100", func(b *testing.B) {
-		q := ctor()
+		q := ctor(bufferSize)
 		b.ResetTimer()
 		var wg sync.WaitGroup
 		wg.Add(2)
@@ -296,8 +296,8 @@ func BenchmarkZenq_Suite(b *testing.B) {
 	})
 
 	b.Run("PingPong/x1", func(b *testing.B) {
-		q1 := ctor()
-		q2 := ctor()
+		q1 := ctor(bufferSize)
+		q2 := ctor(bufferSize)
 		b.ResetTimer()
 		var wg sync.WaitGroup
 		wg.Add(2)

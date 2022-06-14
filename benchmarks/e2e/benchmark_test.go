@@ -9,6 +9,8 @@ import (
 	"github.com/alphadose/zenq"
 )
 
+const bufferSize = 1 << 12
+
 type Payload struct {
 	first   byte
 	second  int64
@@ -29,8 +31,8 @@ var testCases = []test{
 	{writers: 1, readers: 1, inputSize: 1e3},
 	{writers: 3, readers: 3, inputSize: 3e3},
 	{writers: 8, readers: 8, inputSize: 8e3},
-	{writers: zenq.QueueSize * 2, readers: 1, inputSize: zenq.QueueSize * 2 * 4},
-	{writers: 1, readers: zenq.QueueSize * 2, inputSize: zenq.QueueSize * 2 * 4},
+	{writers: bufferSize * 2, readers: 1, inputSize: bufferSize * 2 * 4},
+	{writers: 1, readers: bufferSize * 2, inputSize: bufferSize * 2 * 4},
 	{writers: 100, readers: 100, inputSize: 6e6},
 	{writers: 1e3, readers: 1e3, inputSize: 7e6},
 }
@@ -58,7 +60,7 @@ func BenchmarkChan_ProduceConsume(b *testing.B) {
 }
 
 func benchmarkProduceConsumeChan(b *testing.B, t test) {
-	q := make(chan Payload, zenq.QueueSize)
+	q := make(chan Payload, bufferSize)
 	defer runtime.KeepAlive(q)
 
 	writesPerProducer := t.inputSize / t.writers
@@ -103,7 +105,7 @@ func BenchmarkZenQ_ProduceConsume(b *testing.B) {
 }
 
 func benchmarkProduceConsumeZenQ(b *testing.B, t test) {
-	q := zenq.New[Payload]()
+	q := zenq.New[Payload](bufferSize)
 	defer runtime.KeepAlive(q)
 
 	writesPerProducer := t.inputSize / t.writers
@@ -140,21 +142,21 @@ func BenchmarkChan_New(b *testing.B) {
 	b.Run("struct{}", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			ch := make(chan struct{}, zenq.QueueSize)
+			ch := make(chan struct{}, bufferSize)
 			runtime.KeepAlive(ch)
 		}
 	})
 	b.Run("byte", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			ch := make(chan byte, zenq.QueueSize)
+			ch := make(chan byte, bufferSize)
 			runtime.KeepAlive(ch)
 		}
 	})
 	b.Run("int64", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			ch := make(chan int64, zenq.QueueSize)
+			ch := make(chan int64, bufferSize)
 			runtime.KeepAlive(ch)
 		}
 	})
@@ -164,21 +166,21 @@ func BenchmarkZenQ_New(b *testing.B) {
 	b.Run("struct{}", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			zq := zenq.New[struct{}]()
+			zq := zenq.New[struct{}](bufferSize)
 			runtime.KeepAlive(zq)
 		}
 	})
 	b.Run("byte", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			zq := zenq.New[byte]()
+			zq := zenq.New[byte](bufferSize)
 			runtime.KeepAlive(zq)
 		}
 	})
 	b.Run("int64", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			zq := zenq.New[int64]()
+			zq := zenq.New[int64](bufferSize)
 			runtime.KeepAlive(zq)
 		}
 	})
@@ -186,19 +188,19 @@ func BenchmarkZenQ_New(b *testing.B) {
 
 func BenchmarkZenQ_BackgroundSelectWait(b *testing.B) {
 	const N = 1e4
-	q := zenq.New[struct{}]()
+	q := zenq.New[struct{}](bufferSize)
 
 	// create background waiters
 	for i := 0; i < N; i++ {
 		go func() {
-			alt := zenq.New[struct{}]()
+			alt := zenq.New[struct{}](bufferSize)
 			zenq.Select(q, alt)
 		}()
 	}
 
 	b.ResetTimer()
 
-	a := zenq.New[int]()
+	a := zenq.New[int](bufferSize)
 	for i := 0; i < b.N; i++ {
 		a.Write(i)
 		runtime.Gosched()
@@ -228,7 +230,7 @@ func BenchmarkChan_BackgroundSelectWait(b *testing.B) {
 
 	b.ResetTimer()
 
-	a := make(chan int, zenq.QueueSize)
+	a := make(chan int, bufferSize)
 	for i := 0; i < b.N; i++ {
 		a <- i
 		runtime.Gosched()

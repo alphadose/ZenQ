@@ -16,20 +16,13 @@ package zenq
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"unsafe"
 )
 
 const (
-	power = 12
-
-	// The queue size, should be a power of 2
-	queueSize = 1 << power
-
-	// Masking is faster than division, only works with numbers which are powers of 2
-	indexMask = queueSize - 1
-
 	// add this to uint64 to achieve the same thing as -1 to int64
 	uint64SubtractionConstant = 1<<64 - 1
 )
@@ -76,36 +69,50 @@ type (
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
-		// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
+		// The padding members 1 to 6 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
 		writerIndex   uint64
 		_p1           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		readerIndex   uint64
+		_p            [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		indexMask     uint64
 		_p2           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		globalState   uint32
 		_p3           [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		selectFactory SelectFactory
 		_p4           [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
+		parkPool      *sync.Pool
+		_p5           [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
 		// arrays have faster access speed than slices for single elements
-		contents [queueSize]Slot[T]
-		_p5      cacheLinePadding
+		contents []Slot[T]
+		_p6      cacheLinePadding
 		// memory pool for storing and leasing parking spots for goroutines
-		*sync.Pool
+
 	}
 )
 
+// returns the next greater power of 2 relative to val
+func nextGreaterPowerOf2(val uint64) uint64 {
+	return 1 << int64(math.Min(math.Ceil((Fastlog2(float64(val)))), 63))
+}
+
 // New returns a new queue given its payload type passed as a generic parameter
-func New[T any]() *ZenQ[T] {
+func New[T any](size uint64) *ZenQ[T] {
 	var (
-		contents [queueSize]Slot[T]
-		parkPool = sync.Pool{New: func() any { return new(parkSpot[T]) }}
+		queueSize uint64 = nextGreaterPowerOf2(size)
+		contents         = make([]Slot[T], queueSize, queueSize)
+		parkPool         = sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
-	for idx := 0; idx < queueSize; idx++ {
+	for idx := uint64(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
 		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
-	zenq := &ZenQ[T]{contents: contents, Pool: &parkPool, selectFactory: SelectFactory{waitList: NewList()}}
+	zenq := &ZenQ[T]{
+		contents: contents,
+		parkPool: &parkPool, selectFactory: SelectFactory{waitList: NewList()},
+		indexMask: queueSize - 1,
+	}
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
 	mcall(gosched_m)
@@ -145,7 +152,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&indexMask]
+	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
@@ -153,7 +160,7 @@ direct_send:
 		case SlotBusy:
 			wait()
 		case SlotCommitted:
-			n := self.Get().(*parkSpot[T])
+			n := self.parkPool.Get().(*parkSpot[T])
 			n.threadPtr, n.next, n.value = GetG(), nil, value
 			slot.WriteParker.Park(unsafe.Pointer(n))
 			mcall(fast_park)
@@ -171,7 +178,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&indexMask]
+	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -179,7 +186,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if data, queueOpen = slot.WriteParker.Ready(self.Pool); queueOpen {
+			if data, queueOpen = slot.WriteParker.Ready(self.parkPool); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)
@@ -214,7 +221,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		alreadyClosedForWrites = true
 		return
 	}
-	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&indexMask]
+	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {

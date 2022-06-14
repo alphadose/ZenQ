@@ -17,7 +17,7 @@ type custom2 struct {
 }
 
 const (
-	channelBufferSize = 1 << 12
+	bufferSize = 1 << 12
 
 	numProducers = 4
 )
@@ -28,15 +28,15 @@ var (
 	// input batch size
 	testcases = []int{60, 600, 6e3, 6e5}
 
-	zq1 = zenq.New[int]()
-	zq2 = zenq.New[string]()
-	zq3 = zenq.New[custom1]()
-	zq4 = zenq.New[*custom2]()
+	zq1 = zenq.New[int](bufferSize)
+	zq2 = zenq.New[string](bufferSize)
+	zq3 = zenq.New[custom1](bufferSize)
+	zq4 = zenq.New[*custom2](bufferSize)
 
-	ch1 = make(chan int, channelBufferSize)
-	ch2 = make(chan string, channelBufferSize)
-	ch3 = make(chan custom1, channelBufferSize)
-	ch4 = make(chan *custom2, channelBufferSize)
+	ch1 = make(chan int, bufferSize)
+	ch2 = make(chan string, bufferSize)
+	ch3 = make(chan custom1, bufferSize)
+	ch4 = make(chan *custom2, bufferSize)
 )
 
 func zenqSelector() {
