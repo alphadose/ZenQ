@@ -69,23 +69,23 @@ type (
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
-		// The padding members 1 to 6 below are here to ensure each item is on a separate cache line.
+		// The padding members 1 to 7 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
 		writerIndex   uint64
 		_p1           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		readerIndex   uint64
-		_p            [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
-		indexMask     uint64
 		_p2           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		indexMask     uint64
+		_p3           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		globalState   uint32
-		_p3           [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
+		_p4           [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		selectFactory SelectFactory
-		_p4           [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
+		_p5           [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
 		parkPool      *sync.Pool
-		_p5           [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
+		_p6           [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
 		// arrays have faster access speed than slices for single elements
 		contents []Slot[T]
-		_p6      cacheLinePadding
+		_p7      cacheLinePadding
 		// memory pool for storing and leasing parking spots for goroutines
 
 	}
