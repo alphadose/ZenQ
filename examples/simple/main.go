@@ -13,7 +13,7 @@ type payload struct {
 }
 
 func main() {
-	zq := zenq.New[payload](100)
+	zq := zenq.New[payload](10)
 
 	for j := 0; j < 5; j++ {
 		go func() {
