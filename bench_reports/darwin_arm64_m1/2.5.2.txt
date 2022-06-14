@@ -1,0 +1,41 @@
+name                                     time/op
+_Chan_NumWriters1_InputSize600-8         23.4µs ± 1%
+_ZenQ_NumWriters1_InputSize600-8         17.7µs ± 1%
+_Chan_NumWriters3_InputSize60000-8       5.49ms ± 3%
+_ZenQ_NumWriters3_InputSize60000-8       2.62ms ± 2%
+_Chan_NumWriters8_InputSize6000000-8      685ms ± 1%
+_ZenQ_NumWriters8_InputSize6000000-8      244ms ± 4%
+_Chan_NumWriters100_InputSize6000000-8    1.60s ± 1%
+_ZenQ_NumWriters100_InputSize6000000-8    296ms ± 2%
+_Chan_NumWriters1000_InputSize7000000-8   1.97s ± 0%
+_ZenQ_NumWriters1000_InputSize7000000-8   408ms ± 1%
+_Chan_Million_Blocking_Writers-8          10.5s ± 2%
+_ZenQ_Million_Blocking_Writers-8          1.94s ±12%
+
+name                                     alloc/op
+_Chan_NumWriters1_InputSize600-8          0.00B
+_ZenQ_NumWriters1_InputSize600-8          0.00B
+_Chan_NumWriters3_InputSize60000-8         106B ±71%
+_ZenQ_NumWriters3_InputSize60000-8       26.5B ±119%
+_Chan_NumWriters8_InputSize6000000-8      634B ±339%
+_ZenQ_NumWriters8_InputSize6000000-8     1.10kB ±81%
+_Chan_NumWriters100_InputSize6000000-8   43.3kB ±42%
+_ZenQ_NumWriters100_InputSize6000000-8   10.4kB ±43%
+_Chan_NumWriters1000_InputSize7000000-8   481kB ± 6%
+_ZenQ_NumWriters1000_InputSize7000000-8  89.3kB ± 4%
+_Chan_Million_Blocking_Writers-8          553MB ± 0%
+_ZenQ_Million_Blocking_Writers-8          123MB ± 3%
+
+name                                     allocs/op
+_Chan_NumWriters1_InputSize600-8           0.00
+_ZenQ_NumWriters1_InputSize600-8           0.00
+_Chan_NumWriters3_InputSize60000-8         0.00
+_ZenQ_NumWriters3_InputSize60000-8         0.00
+_Chan_NumWriters8_InputSize6000000-8      2.03 ±195%
+_ZenQ_NumWriters8_InputSize6000000-8       5.17 ±74%
+_Chan_NumWriters100_InputSize6000000-8      157 ±27%
+_ZenQ_NumWriters100_InputSize6000000-8     24.1 ±45%
+_Chan_NumWriters1000_InputSize7000000-8   1.77k ± 4%
+_ZenQ_NumWriters1000_InputSize7000000-8    45.2 ±17%
+_Chan_Million_Blocking_Writers-8          2.00M ± 0%
+_ZenQ_Million_Blocking_Writers-8          1.00M ± 0%

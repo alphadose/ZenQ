@@ -31,9 +31,10 @@ type parkSpot[T any] struct {
 // the parked goroutine is called with minimal overhead via goready() due to both being in userland
 // This ensures there is no thundering herd https://en.wikipedia.org/wiki/Thundering_herd_problem
 func (tp *ThreadParker[T]) Park(nextNode unsafe.Pointer) {
+	var tail, next unsafe.Pointer
 	for {
-		tail := atomic.LoadPointer(&tp.tail)
-		next := atomic.LoadPointer(&((*parkSpot[T])(tail)).next)
+		tail = atomic.LoadPointer(&tp.tail)
+		next = atomic.LoadPointer(&((*parkSpot[T])(tail)).next)
 		if tail == atomic.LoadPointer(&tp.tail) {
 			if next == nil {
 				if atomic.CompareAndSwapPointer(&((*parkSpot[T])(tail)).next, next, nextNode) {
@@ -49,11 +50,11 @@ func (tp *ThreadParker[T]) Park(nextNode unsafe.Pointer) {
 
 // Ready calls one parked goroutine from the queue if available
 func (tp *ThreadParker[T]) Ready(parkPool *sync.Pool) (data T, ok bool) {
-	// Ready calls one parked goroutine from the queue if available
+	var head, tail, next unsafe.Pointer
 	for {
-		head := atomic.LoadPointer(&tp.head)
-		tail := atomic.LoadPointer(&tp.tail)
-		next := atomic.LoadPointer(&((*parkSpot[T])(head)).next)
+		head = atomic.LoadPointer(&tp.head)
+		tail = atomic.LoadPointer(&tp.tail)
+		next = atomic.LoadPointer(&((*parkSpot[T])(head)).next)
 		if head == atomic.LoadPointer(&tp.head) {
 			if head == tail {
 				if next == nil {
