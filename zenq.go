@@ -185,7 +185,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if data, queueOpen = slot.WriteParker.Ready(self.Pool); queueOpen {
+			if data, queueOpen = slot.WriteParker.Ready(self); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)

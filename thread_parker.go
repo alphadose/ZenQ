@@ -1,7 +1,6 @@
 package zenq
 
 import (
-	"sync"
 	"sync/atomic"
 	"unsafe"
 )
@@ -49,7 +48,7 @@ func (tp *ThreadParker[T]) Park(nextNode unsafe.Pointer) {
 }
 
 // Ready calls one parked goroutine from the queue if available
-func (tp *ThreadParker[T]) Ready(parkPool *sync.Pool) (data T, ok bool) {
+func (tp *ThreadParker[T]) Ready(parkPool *ZenQ[T]) (data T, ok bool) {
 	var head, tail, next unsafe.Pointer
 	for {
 		head = atomic.LoadPointer(&tp.head)
