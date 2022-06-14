@@ -61,26 +61,26 @@ type (
 	}
 
 	SelectFactory struct {
-		auxThread unsafe.Pointer
 		state     uint32
-		waitList  List
+		auxThread unsafe.Pointer
 		backlog   unsafe.Pointer
+		waitList  List
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
 		// The padding members 1 to 7 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
-		writerIndex   uint64
-		_p1           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
-		readerIndex   uint64
-		_p2           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
-		indexMask     uint64
-		_p3           [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
-		globalState   uint32
-		_p4           [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
-		selectFactory SelectFactory
-		_p5           [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
+		writerIndex uint64
+		_p1         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		readerIndex uint64
+		_p2         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		indexMask   uint64
+		_p3         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		globalState uint32
+		_p4         [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
+		SelectFactory
+		_p5 [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
 		// memory pool for storing and leasing parking spots for goroutines
 		*sync.Pool
 		_p6      [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
@@ -109,7 +109,7 @@ func New[T any](size uint64) *ZenQ[T] {
 	zenq := &ZenQ[T]{
 		contents:      contents,
 		Pool:          parkPool,
-		selectFactory: SelectFactory{waitList: NewList()},
+		SelectFactory: SelectFactory{waitList: NewList()},
 		indexMask:     queueSize - 1,
 	}
 	go zenq.selectSender()
@@ -130,7 +130,7 @@ func (self *ZenQ[T]) Write(value T) (queueClosedForWrites bool) {
 	// Try to send directly to selector when possible or else just dequeue unselected references
 	// in order to reduce the burden on the auxillary thread and save cpu time
 direct_send:
-	if s := self.selectFactory.waitList.Dequeue(); s != nil {
+	if s := self.waitList.Dequeue(); s != nil {
 		sel := (*Selection)(s)
 		if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
 			if self.IsClosed() {
@@ -248,7 +248,7 @@ func (self *ZenQ[T]) CloseAsync() {
 
 // ReadFromBackLog tries to read a data from backlog if available
 func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
-	if d := atomic.SwapPointer(&self.selectFactory.backlog, nil); d != nil {
+	if d := atomic.SwapPointer(&self.backlog, nil); d != nil {
 		data, ok = *((*T)(d)), true
 	}
 	return
@@ -256,17 +256,17 @@ func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
 
 // Signal is the mechanism by which a selector notifies this ZenQ's auxillary thread to contest for the selection
 func (self *ZenQ[T]) Signal() (sig uint8) {
-	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionOpen, SelectionRunning) {
+	if !atomic.CompareAndSwapUint32(&self.state, SelectionOpen, SelectionRunning) {
 		return
 	}
 	sig = 1
-	safe_ready(self.selectFactory.auxThread)
+	safe_ready(self.auxThread)
 	return
 }
 
 // EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist
 func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
-	self.selectFactory.waitList.Enqueue(unsafe.Pointer(sel))
+	self.waitList.Enqueue(unsafe.Pointer(sel))
 }
 
 // IsClosed returns whether the zenq is closed for both reads and writes
@@ -303,7 +303,7 @@ func (self *ZenQ[T]) Dump() {
 // if it fails, then it parks again and waits for another signal from another selection process
 // since it is parked most of the times, it consumes minimal cpu time making the selection process efficient
 func (self *ZenQ[T]) selectSender() {
-	atomic.StorePointer(&self.selectFactory.auxThread, GetG())
+	atomic.StorePointer(&self.auxThread, GetG())
 	var (
 		data                 T
 		sel                  *Selection
@@ -323,7 +323,7 @@ func (self *ZenQ[T]) selectSender() {
 		for {
 			// keep dequeuing selectors from waitlist and try to acquire one
 			// if acquired write to selector, ready it and go back to parking state
-			if s = self.selectFactory.waitList.Dequeue(); s != nil {
+			if s = self.waitList.Dequeue(); s != nil {
 				sel = (*Selection)(s)
 				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
 					// implementaion of sending from closed channel to selector mechanism
@@ -356,8 +356,8 @@ func (self *ZenQ[T]) selectSender() {
 		// saves a lot of cpu time
 		if readState && queueOpen {
 			var i T = data
-			atomic.StorePointer(&self.selectFactory.backlog, unsafe.Pointer(&i))
+			atomic.StorePointer(&self.backlog, unsafe.Pointer(&i))
 		}
-		atomic.StoreUint32(&self.selectFactory.state, SelectionOpen)
+		atomic.StoreUint32(&self.state, SelectionOpen)
 	}
 }
