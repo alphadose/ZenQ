@@ -17,7 +17,7 @@ type custom2 struct {
 }
 
 const (
-	bufferSize = 1 << 12
+	bufferSize = 8
 
 	numProducers = 4
 )
