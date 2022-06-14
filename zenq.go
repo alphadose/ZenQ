@@ -259,8 +259,8 @@ func (self *ZenQ[T]) Signal() (sig uint8) {
 	if !atomic.CompareAndSwapUint32(&self.selectFactory.state, SelectionOpen, SelectionRunning) {
 		return
 	}
-	safe_ready(self.selectFactory.auxThread)
 	sig = 1
+	safe_ready(self.selectFactory.auxThread)
 	return
 }
 
@@ -304,10 +304,12 @@ func (self *ZenQ[T]) Dump() {
 // since it is parked most of the times, it consumes minimal cpu time making the selection process efficient
 func (self *ZenQ[T]) selectSender() {
 	atomic.StorePointer(&self.selectFactory.auxThread, GetG())
-	var data T
-	var sel *Selection
-	var s unsafe.Pointer
-	readState, queueOpen := false, true
+	var (
+		data                 T
+		sel                  *Selection
+		s                    unsafe.Pointer
+		readState, queueOpen bool = false, true
+	)
 
 	for {
 		// park by default and wait for Signal() notification from a selection process
