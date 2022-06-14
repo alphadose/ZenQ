@@ -21,8 +21,7 @@ type List struct {
 func NewList() List {
 	n := nodePool.Get().(unsafe.Pointer)
 	(*node)(n).next, (*node)(n).value = nil, nil
-	ptr := unsafe.Pointer(n)
-	return List{head: ptr, tail: ptr}
+	return List{head: n, tail: n}
 }
 
 // a single node in the linked list
