@@ -81,19 +81,17 @@ type (
 		_p4           [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		selectFactory SelectFactory
 		_p5           [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
-		parkPool      *sync.Pool
-		_p6           [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
-		// arrays have faster access speed than slices for single elements
+		// memory pool for storing and leasing parking spots for goroutines
+		*sync.Pool
+		_p6      [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
 		contents []Slot[T]
 		_p7      cacheLinePadding
-		// memory pool for storing and leasing parking spots for goroutines
-
 	}
 )
 
 // returns the next greater power of 2 relative to val
 func nextGreaterPowerOf2(val uint64) uint64 {
-	return 1 << int64(math.Min(math.Ceil((Fastlog2(float64(val)))), 63))
+	return 1 << int64(math.Min(math.Ceil(Fastlog2(float64(val))), 63))
 }
 
 // New returns a new queue given its payload type passed as a generic parameter
@@ -109,9 +107,10 @@ func New[T any](size uint64) *ZenQ[T] {
 		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
 	zenq := &ZenQ[T]{
-		contents: contents,
-		parkPool: &parkPool, selectFactory: SelectFactory{waitList: NewList()},
-		indexMask: queueSize - 1,
+		contents:      contents,
+		Pool:          &parkPool,
+		selectFactory: SelectFactory{waitList: NewList()},
+		indexMask:     queueSize - 1,
 	}
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
@@ -160,7 +159,7 @@ direct_send:
 		case SlotBusy:
 			wait()
 		case SlotCommitted:
-			n := self.parkPool.Get().(*parkSpot[T])
+			n := self.Get().(*parkSpot[T])
 			n.threadPtr, n.next, n.value = GetG(), nil, value
 			slot.WriteParker.Park(unsafe.Pointer(n))
 			mcall(fast_park)
@@ -186,7 +185,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if data, queueOpen = slot.WriteParker.Ready(self.parkPool); queueOpen {
+			if data, queueOpen = slot.WriteParker.Ready(self.Pool); queueOpen {
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)
