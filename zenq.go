@@ -99,7 +99,7 @@ func New[T any](size uint64) *ZenQ[T] {
 	var (
 		queueSize uint64 = nextGreaterPowerOf2(size)
 		contents         = make([]Slot[T], queueSize, queueSize)
-		parkPool         = sync.Pool{New: func() any { return new(parkSpot[T]) }}
+		parkPool         = &sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
 	for idx := uint64(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
@@ -108,7 +108,7 @@ func New[T any](size uint64) *ZenQ[T] {
 	}
 	zenq := &ZenQ[T]{
 		contents:      contents,
-		Pool:          &parkPool,
+		Pool:          parkPool,
 		selectFactory: SelectFactory{waitList: NewList()},
 		indexMask:     queueSize - 1,
 	}
