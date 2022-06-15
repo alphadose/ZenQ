@@ -84,7 +84,7 @@ type (
 		// memory pool for storing and leasing parking spots for goroutines
 		*sync.Pool
 		_p6      [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
-		contents []Slot[T]
+		contents []*Slot[T]
 		_p7      cacheLinePadding
 	}
 )
@@ -98,13 +98,13 @@ func nextGreaterPowerOf2(val uint64) uint64 {
 func New[T any](size uint64) *ZenQ[T] {
 	var (
 		queueSize uint64 = nextGreaterPowerOf2(size)
-		contents         = make([]Slot[T], queueSize, queueSize)
+		contents         = make([]*Slot[T], queueSize, queueSize)
 		parkPool         = &sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
 	for idx := uint64(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
-		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
+		contents[idx] = &Slot[T]{WriteParker: NewThreadParker[T](unsafe.Pointer(n))}
 	}
 	zenq := &ZenQ[T]{
 		contents:      contents,
@@ -151,7 +151,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
+	slot := self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
@@ -177,7 +177,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := &self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&self.indexMask]
+	slot := self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -220,7 +220,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		alreadyClosedForWrites = true
 		return
 	}
-	slot := &self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
+	slot := self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
