@@ -91,7 +91,7 @@ type (
 
 // returns the next greater power of 2 relative to val
 func nextGreaterPowerOf2(val uint64) uint64 {
-	return 1 << int64(math.Min(math.Ceil(Fastlog2(float64(val))), 63))
+	return 1 << int64(math.Min(math.Ceil(Fastlog2(math.Max(float64(val), 1))), 63))
 }
 
 // New returns a new queue given its payload type passed as a generic parameter
