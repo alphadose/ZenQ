@@ -7,10 +7,10 @@ import (
 )
 
 // global memory pool for holding selection objects
-var selectionPool = &sync.Pool{}
+var selectionPool = sync.Pool{}
 
 func init() {
-	selectionPool.New = func() any { return &Selection{collectorPool: selectionPool} }
+	selectionPool.New = func() any { return &Selection{free: selectionPool.Put} }
 }
 
 // Selection is an object shared by a selector and its children ZenQs
@@ -20,7 +20,7 @@ type Selection struct {
 	Data           any
 	numQueues      int64
 	referenceCount int64
-	collectorPool  *sync.Pool
+	free           func(any)
 }
 
 // SignalQueueClosure signals the closure of one ZenQ to the selector thread
@@ -46,7 +46,7 @@ func (sel *Selection) DecrementReferenceCount() {
 	if atomic.AddInt64(&sel.referenceCount, -1) == 0 {
 		sel.ThreadPtr, sel.Data = nil, nil
 		// reuse this object in another selection event thereby saving memory
-		sel.collectorPool.Put(sel)
+		sel.free(sel)
 	}
 }
 
