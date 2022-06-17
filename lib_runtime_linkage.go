@@ -151,11 +151,11 @@ var multicore = runtime.NumCPU() > 1
 func safe_ready(gp unsafe.Pointer) {
 	// for better microprocessor branch prediction
 	if multicore {
-		for Readgstatus(gp) != _Gwaiting {
+		for Readgstatus(gp)&^_Gscan != _Gwaiting {
 			spin(20)
 		}
 	} else {
-		for Readgstatus(gp) != _Gwaiting {
+		for Readgstatus(gp)&^_Gscan != _Gwaiting {
 			mcall(gosched_m)
 		}
 	}
