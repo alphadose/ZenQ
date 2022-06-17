@@ -69,7 +69,7 @@ type (
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
-		// The padding members 1 to 7 below are here to ensure each item is on a separate cache line.
+		// The padding members 1 to 8 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
 		writerIndex uint64
 		_p1         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
@@ -82,10 +82,12 @@ type (
 		SelectFactory
 		_p5 [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
 		// memory pool for storing and leasing parking spots for goroutines
-		*sync.Pool
-		_p6      [cacheLinePadSize - unsafe.Sizeof(&sync.Pool{})]byte
+		alloc    func() any
+		_p6      [cacheLinePadSize - unsafe.Sizeof(func() {})]byte
+		free     func(any)
+		_p7      [cacheLinePadSize - unsafe.Sizeof(func() {})]byte
 		contents []*Slot[T]
-		_p7      cacheLinePadding
+		_p8      cacheLinePadding
 	}
 )
 
@@ -99,7 +101,7 @@ func New[T any](size uint64) *ZenQ[T] {
 	var (
 		queueSize uint64 = nextGreaterPowerOf2(size)
 		contents         = make([]*Slot[T], queueSize, queueSize)
-		parkPool         = &sync.Pool{New: func() any { return new(parkSpot[T]) }}
+		parkPool         = sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
 	for idx := uint64(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
@@ -108,7 +110,8 @@ func New[T any](size uint64) *ZenQ[T] {
 	}
 	zenq := &ZenQ[T]{
 		contents:      contents,
-		Pool:          parkPool,
+		alloc:         parkPool.Get,
+		free:          parkPool.Put,
 		SelectFactory: SelectFactory{waitList: NewList()},
 		indexMask:     queueSize - 1,
 	}
@@ -159,7 +162,7 @@ direct_send:
 		case SlotBusy:
 			wait()
 		case SlotCommitted:
-			n := self.Get().(*parkSpot[T])
+			n := self.alloc().(*parkSpot[T])
 			n.threadPtr, n.next, n.value = GetG(), nil, value
 			slot.WriteParker.Park(unsafe.Pointer(n))
 			mcall(fast_park)
@@ -185,7 +188,11 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
-			if data, queueOpen = slot.WriteParker.Ready(self); queueOpen {
+			var freeable *parkSpot[T]
+			if data, queueOpen, freeable = slot.WriteParker.Ready(); queueOpen {
+				if freeable != nil {
+					self.free(freeable)
+				}
 				return
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)

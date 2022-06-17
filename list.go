@@ -7,7 +7,11 @@ import (
 )
 
 // global memory pool for storing and leasing node objects
-var nodePool = sync.Pool{New: func() any { return unsafe.Pointer(new(node)) }}
+var (
+	nodePool = sync.Pool{New: func() any { return unsafe.Pointer(new(node)) }}
+	nodeGet  = nodePool.Get
+	nodePut  = nodePool.Put
+)
 
 // List is a lock-free linked list
 // theory -> https://www.cs.rochester.edu/u/scott/papers/1996_PODC_queues.pdf
@@ -19,7 +23,7 @@ type List struct {
 
 // NewList returns a new list
 func NewList() List {
-	n := nodePool.Get().(unsafe.Pointer)
+	n := nodeGet().(unsafe.Pointer)
 	(*node)(n).next, (*node)(n).value = nil, nil
 	return List{head: n, tail: n}
 }
@@ -33,7 +37,7 @@ type node struct {
 // Enqueue inserts a value into the list
 func (l *List) Enqueue(value unsafe.Pointer) {
 	var (
-		n          = nodePool.Get().(unsafe.Pointer)
+		n          = nodeGet().(unsafe.Pointer)
 		tail, next unsafe.Pointer
 	)
 	(*node)(n).next, (*node)(n).value = nil, value
@@ -75,7 +79,7 @@ func (l *List) Dequeue() (value unsafe.Pointer) {
 				if atomic.CompareAndSwapPointer(&l.head, head, next) {
 					// sysFreeOS(unsafe.Pointer(head), nodeSize)
 					(*node)(head).next, (*node)(head).value = nil, nil
-					nodePool.Put(head)
+					nodePut(head)
 					return // Dequeue is done.  return
 				}
 			}

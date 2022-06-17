@@ -48,7 +48,7 @@ func (tp *ThreadParker[T]) Park(nextNode unsafe.Pointer) {
 }
 
 // Ready calls one parked goroutine from the queue if available
-func (tp *ThreadParker[T]) Ready(parkPool *ZenQ[T]) (data T, ok bool) {
+func (tp *ThreadParker[T]) Ready() (data T, ok bool, freeable *parkSpot[T]) {
 	var head, tail, next unsafe.Pointer
 	for {
 		head = atomic.LoadPointer(&tp.head)
@@ -64,8 +64,8 @@ func (tp *ThreadParker[T]) Ready(parkPool *ZenQ[T]) (data T, ok bool) {
 				safe_ready((*parkSpot[T])(next).threadPtr)
 				data, ok = (*parkSpot[T])(next).value, true
 				if atomic.CompareAndSwapPointer(&tp.head, head, next) {
-					(*parkSpot[T])(head).threadPtr, (*parkSpot[T])(head).next = nil, nil
-					parkPool.Put((*parkSpot[T])(head))
+					freeable = (*parkSpot[T])(head)
+					freeable.threadPtr, freeable.next = nil, nil
 					return
 				}
 			}
