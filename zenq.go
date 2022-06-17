@@ -273,7 +273,7 @@ func (self *ZenQ[T]) Signal() (sig uint8) {
 
 // EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist
 func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
-	self.waitList.Enqueue(unsafe.Pointer(sel))
+	self.waitList.Enqueue(sel)
 }
 
 // IsClosed returns whether the zenq is closed for both reads and writes
@@ -314,7 +314,6 @@ func (self *ZenQ[T]) selectSender() {
 	var (
 		data                 T
 		sel                  *Selection
-		s                    unsafe.Pointer
 		readState, queueOpen bool = false, true
 	)
 
@@ -330,8 +329,7 @@ func (self *ZenQ[T]) selectSender() {
 		for {
 			// keep dequeuing selectors from waitlist and try to acquire one
 			// if acquired write to selector, ready it and go back to parking state
-			if s = self.waitList.Dequeue(); s != nil {
-				sel = (*Selection)(s)
+			if sel = self.waitList.Dequeue(); sel != nil {
 				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
 					// implementaion of sending from closed channel to selector mechanism
 					if !queueOpen {

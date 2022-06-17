@@ -31,11 +31,11 @@ func NewList() List {
 // a single node in the linked list
 type node struct {
 	next  unsafe.Pointer
-	value unsafe.Pointer
+	value *Selection
 }
 
 // Enqueue inserts a value into the list
-func (l *List) Enqueue(value unsafe.Pointer) {
+func (l *List) Enqueue(value *Selection) {
 	var (
 		n          = nodeGet().(unsafe.Pointer)
 		tail, next unsafe.Pointer
@@ -60,7 +60,7 @@ func (l *List) Enqueue(value unsafe.Pointer) {
 
 // Dequeue removes and returns the value at the head of the queue to the memory pool
 // It returns nil if the list is empty
-func (l *List) Dequeue() (value unsafe.Pointer) {
+func (l *List) Dequeue() (value *Selection) {
 	var head, tail, next unsafe.Pointer
 	for {
 		head = atomic.LoadPointer(&l.head)

@@ -65,7 +65,7 @@ func (tp *ThreadParker[T]) Ready() (data T, ok bool, freeable *parkSpot[T]) {
 				data, ok = (*parkSpot[T])(next).value, true
 				if atomic.CompareAndSwapPointer(&tp.head, head, next) {
 					freeable = (*parkSpot[T])(head)
-					freeable.threadPtr, freeable.next = nil, nil
+					freeable.next, freeable.threadPtr = nil, nil
 					return
 				}
 			}
