@@ -7,7 +7,10 @@ import (
 )
 
 // global memory pool for holding selection objects
-var selectionPool = sync.Pool{}
+var (
+	selectionPool = sync.Pool{}
+	selectionGet  = selectionPool.Get
+)
 
 func init() {
 	selectionPool.New = func() any { return &Selection{free: selectionPool.Put} }
@@ -50,12 +53,6 @@ func (sel *Selection) DecrementReferenceCount() {
 	}
 }
 
-// NewSelectionObject returns a selection object from the memory pool
-func NewSelectionObject() (sel *Selection) {
-	sel = selectionPool.Get().(*Selection)
-	return
-}
-
 // Selectable is an interface for getting selected among many others
 type Selectable interface {
 	IsClosed() bool
@@ -93,7 +90,7 @@ func Select(streams ...Selectable) (data any, ok bool) {
 		waitq[i], waitq[j] = waitq[j], waitq[i]
 	}
 
-	sel, g, numSignals, iter := NewSelectionObject(), GetG(), uint8(0), 0
+	sel, g, numSignals, iter := selectionGet().(*Selection), GetG(), uint8(0), 0
 
 	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, int64(numStreams), int64(numStreams+1)
 
