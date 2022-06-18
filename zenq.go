@@ -314,6 +314,7 @@ func (self *ZenQ[T]) selectSender() {
 	var (
 		data                 T
 		sel                  *Selection
+		threadPtr            unsafe.Pointer
 		readState, queueOpen bool = false, true
 	)
 
@@ -330,13 +331,13 @@ func (self *ZenQ[T]) selectSender() {
 			// keep dequeuing selectors from waitlist and try to acquire one
 			// if acquired write to selector, ready it and go back to parking state
 			if sel = self.waitList.Dequeue(); sel != nil {
-				if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
+				if threadPtr = atomic.SwapPointer(sel.ThreadPtr, nil); threadPtr != nil {
 					// implementaion of sending from closed channel to selector mechanism
 					if !queueOpen {
 						// Signal to the selector that this queue is closed
 						if sel.SignalQueueClosure() {
 							// unblock the selector thread if all queues are closed so that it returns nil, false
-							safe_ready(selThread)
+							safe_ready(threadPtr)
 						}
 						// lazily decrement reference count until it is finally collected by the memory pool
 						sel.DecrementReferenceCount()
@@ -345,7 +346,7 @@ func (self *ZenQ[T]) selectSender() {
 					// write to the selector
 					sel.Data = data
 					// notify selector
-					safe_ready(selThread)
+					safe_ready(threadPtr)
 					readState = false
 					sel.DecrementReferenceCount()
 					break selector_dequeue
