@@ -154,7 +154,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
+	slot := self.contents[atomic.AddUint64(&self.writerIndex, 1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
@@ -180,7 +180,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := self.contents[(atomic.AddUint64(&self.readerIndex, 1)-1)&self.indexMask]
+	slot := self.contents[atomic.AddUint64(&self.readerIndex, 1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -227,7 +227,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		alreadyClosedForWrites = true
 		return
 	}
-	slot := self.contents[(atomic.AddUint64(&self.writerIndex, 1)-1)&self.indexMask]
+	slot := self.contents[atomic.AddUint64(&self.writerIndex, 1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
