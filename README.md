@@ -29,7 +29,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/alphadose/zenq"
+	"github.com/alphadose/zenq/v2"
 )
 
 type payload struct {
@@ -66,7 +66,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/alphadose/zenq"
+	"github.com/alphadose/zenq/v2"
 )
 
 type custom1 struct {
