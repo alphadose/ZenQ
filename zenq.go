@@ -69,7 +69,7 @@ type (
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
 	ZenQ[T any] struct {
-		// The padding members 1 to 8 below are here to ensure each item is on a separate cache line.
+		// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
 		writerIndex uint64
 		_p1         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
