@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/alphadose/zenq"
+	"github.com/alphadose/zenq/v2"
 )
 
 // wrapper for chan to have exactly the same api as zenq.

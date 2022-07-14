@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alphadose/zenq"
+	"github.com/alphadose/zenq/v2"
 )
 
 // Example item which we will be writing to and reading from the queue

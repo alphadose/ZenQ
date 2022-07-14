@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/alphadose/zenq"
+	"github.com/alphadose/zenq/v2"
 )
 
 type payload struct {

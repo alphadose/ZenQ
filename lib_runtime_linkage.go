@@ -5,7 +5,7 @@ import (
 	"unsafe"
 	_ "unsafe"
 
-	"github.com/alphadose/zenq/constants"
+	"github.com/alphadose/zenq/v2/constants"
 )
 
 const cacheLinePadSize = constants.CacheLinePadSize
