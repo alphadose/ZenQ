@@ -75,19 +75,16 @@ type (
 		_p1         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		readerIndex uint64
 		_p2         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
-		indexMask   uint64
-		_p3         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
 		globalState uint32
-		_p4         [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
+		indexMask   uint64
+		// memory pool refs for storing and leasing parking spots for goroutines
+		alloc func() any
+		free  func(any)
+		_p3   [cacheLinePadSize - unsafe.Sizeof(uint32(0)) - unsafe.Sizeof(uint64(0)) - 2*unsafe.Sizeof(func() {})]byte
 		SelectFactory
-		_p5 [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
-		// memory pool for storing and leasing parking spots for goroutines
-		alloc    func() any
-		_p6      [cacheLinePadSize - unsafe.Sizeof(func() {})]byte
-		free     func(any)
-		_p7      [cacheLinePadSize - unsafe.Sizeof(func() {})]byte
+		_p4      [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
 		contents []*Slot[T]
-		_p8      cacheLinePadding
+		_p5      cacheLinePadding
 	}
 )
 
