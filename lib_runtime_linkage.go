@@ -137,6 +137,20 @@ func gosched_m(gp unsafe.Pointer)
 //go:linkname spin runtime.procyield
 func spin(cycles uint32)
 
+//go:linkname noescape runtime.noescape
+func noescape(p unsafe.Pointer) unsafe.Pointer
+
+// ProcPin and ProcUnpin disable pre-emption for any calling goroutine
+// can be used to guarantee consistent latency
+//go:linkname ProcPin runtime.procPin
+func ProcPin() int
+
+//go:linkname ProcUnpin runtime.procUnpin
+func ProcUnpin()
+
+//go:linkname memequal runtime.memequal
+func memequal(a, b unsafe.Pointer, size uintptr) bool
+
 // custom parking function
 func fast_park(gp unsafe.Pointer) {
 	dropg()
