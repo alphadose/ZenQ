@@ -28,15 +28,13 @@ type Selection struct {
 
 // SignalQueueClosure signals the closure of one ZenQ to the selector thread
 // it returns if all queues were closed or not in which case the calling thread must goready() the selector thread
-func (sel *Selection) SignalQueueClosure() (allQueuesClosed bool) {
-	allQueuesClosed = atomic.AddInt64(&sel.numQueues, -1) == 0
-	return
+func (sel *Selection) SignalQueueClosure() bool {
+	return atomic.AddInt64(&sel.numQueues, -1) == 0
 }
 
 // AllQueuesClosed returns whether all the queues present in selection are closed or not
-func (sel *Selection) AllQueuesClosed() (allQueuesClosed bool) {
-	allQueuesClosed = atomic.LoadInt64(&sel.numQueues) == 0
-	return
+func (sel *Selection) AllQueuesClosed() bool {
+	return atomic.LoadInt64(&sel.numQueues) == 0
 }
 
 // IncrementReferenceCount does exactly what it says

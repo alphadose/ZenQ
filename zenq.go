@@ -261,13 +261,12 @@ func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
 }
 
 // Signal is the mechanism by which a selector notifies this ZenQ's auxillary thread to contest for the selection
-func (self *ZenQ[T]) Signal() (sig uint8) {
+func (self *ZenQ[T]) Signal() uint8 {
 	if !atomic.CompareAndSwapUint32(&self.state, SelectionOpen, SelectionRunning) {
-		return
+		return 0
 	}
-	sig = 1
 	safe_ready(self.auxThread)
-	return
+	return 1
 }
 
 // EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist
@@ -276,9 +275,8 @@ func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
 }
 
 // IsClosed returns whether the zenq is closed for both reads and writes
-func (self *ZenQ[T]) IsClosed() (closed bool) {
-	closed = atomic.LoadUint32(&self.globalState) == StateFullyClosed
-	return
+func (self *ZenQ[T]) IsClosed() bool {
+	return atomic.LoadUint32(&self.globalState) == StateFullyClosed
 }
 
 // Reset resets the queue state
@@ -296,8 +294,8 @@ func (self *ZenQ[T]) Reset() {
 // Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Dump() {
 	fmt.Printf("writerIndex: %3d, readerIndex: %3d\n contents:-\n\n", self.writerIndex, self.readerIndex)
-	for index := range self.contents {
-		fmt.Printf("%5v : State -> %5v, Item -> %5v\n", index, self.contents[index].State, self.contents[index].Item)
+	for idx := range self.contents {
+		fmt.Printf("%5v : State -> %5v, Item -> %5v\n", idx, self.contents[idx].State, self.contents[idx].Item)
 	}
 }
 
