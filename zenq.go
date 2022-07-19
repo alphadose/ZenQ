@@ -196,12 +196,14 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			} else {
 				// queue is closed, rollback the reader index by 1
 				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
+				queueOpen = false
 				return
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(&slot.State, SlotClosed, SlotEmpty) {
 				atomic.StoreUint32(&self.globalState, StateFullyClosed)
 			}
+			queueOpen = false
 			return
 		case SlotCommitted:
 			continue
@@ -284,11 +286,8 @@ func (self *ZenQ[T]) IsClosed() (closed bool) {
 func (self *ZenQ[T]) Reset() {
 	// Close() is blocking when queue is full hence execute it asynchronously
 	self.CloseAsync()
-drain:
-	for {
-		if _, open := self.Read(); !open {
-			break drain
-		}
+	// drain entire queue
+	for open := true; open; _, open = self.Read() {
 	}
 	atomic.StoreUint32(&self.globalState, StateOpen)
 }
