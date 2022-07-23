@@ -21,30 +21,30 @@ func init() {
 type Selection struct {
 	ThreadPtr      *unsafe.Pointer
 	Data           any
-	numQueues      int64
-	referenceCount int64
+	numQueues      int32
+	referenceCount int32
 	free           func(any)
 }
 
 // SignalQueueClosure signals the closure of one ZenQ to the selector thread
 // it returns if all queues were closed or not in which case the calling thread must goready() the selector thread
 func (sel *Selection) SignalQueueClosure() bool {
-	return atomic.AddInt64(&sel.numQueues, -1) == 0
+	return atomic.AddInt32(&sel.numQueues, -1) == 0
 }
 
 // AllQueuesClosed returns whether all the queues present in selection are closed or not
 func (sel *Selection) AllQueuesClosed() bool {
-	return atomic.LoadInt64(&sel.numQueues) == 0
+	return atomic.LoadInt32(&sel.numQueues) == 0
 }
 
 // IncrementReferenceCount does exactly what it says
 func (sel *Selection) IncrementReferenceCount() {
-	atomic.AddInt64(&sel.referenceCount, 1)
+	atomic.AddInt32(&sel.referenceCount, 1)
 }
 
 // DecrementReferenceCount decrements the reference count by 1 and puts the object back into the pool if it reaches 0
 func (sel *Selection) DecrementReferenceCount() {
-	if atomic.AddInt64(&sel.referenceCount, -1) == 0 {
+	if atomic.AddInt32(&sel.referenceCount, -1) == 0 {
 		sel.ThreadPtr, sel.Data = nil, nil
 		// reuse this object in another selection event thereby saving memory
 		sel.free(sel)
@@ -62,41 +62,43 @@ type Selectable interface {
 // Select selects a single element out of multiple ZenQs
 // the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
 func Select(streams ...Selectable) (data any, ok bool) {
-	waitq, numStreams := make([]Selectable, len(streams), len(streams)), uint32(0)
-	for idx := 0; idx < len(streams); idx++ {
+	var idx, numStreams int32 = 0, int32(len(streams) - 1)
+filter_shuffle:
+	for ; idx < numStreams; idx++ {
 		if streams[idx] == nil || streams[idx].IsClosed() {
-			continue
+			for ; numStreams >= 0 && (streams[numStreams] == nil || streams[numStreams].IsClosed()); numStreams-- {
+			}
+			if idx >= numStreams {
+				break filter_shuffle
+			}
+			streams[idx], streams[numStreams] = streams[numStreams], streams[idx]
+			numStreams--
+			shuffleIdx := fastrandn(uint32(idx + 1))
+			streams[idx], streams[shuffleIdx] = streams[shuffleIdx], streams[idx]
 		}
-		waitq[numStreams] = streams[idx]
-		numStreams++
 	}
-	if numStreams == 0 {
+	if numStreams < 0 {
+		ok = false
 		return
 	}
 
-	// best case - optimistic first pass
-	for idx := uint32(0); idx < numStreams; idx++ {
-		if data, ok = waitq[idx].ReadFromBackLog(); ok {
+	for idx = 0; idx <= numStreams; idx++ {
+		if data, ok = streams[idx].ReadFromBackLog(); ok {
 			return
 		}
 	}
 
-	// shuffle the queue to avoid deterministic starvation
-	for i, j := uint32(0), uint32(0); i < numStreams; i, j = i+1, fastrandn(i+1) {
-		waitq[i], waitq[j] = waitq[j], waitq[i]
-	}
-
 	sel, g, numSignals, iter := selectionGet().(*Selection), GetG(), uint8(0), 0
 
-	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, int64(numStreams), int64(numStreams+1)
+	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, numStreams+1, numStreams+2
 
-	for idx := uint32(0); idx < numStreams; idx++ {
-		waitq[idx].EnqueueSelector(sel)
+	for idx = 0; idx <= numStreams; idx++ {
+		streams[idx].EnqueueSelector(sel)
 	}
 
 retry:
-	for idx := uint32(0); idx < numStreams; idx++ {
-		numSignals += waitq[idx].Signal()
+	for idx = 0; idx <= numStreams; idx++ {
+		numSignals += streams[idx].Signal()
 	}
 
 	// might cause deadlock without this case
