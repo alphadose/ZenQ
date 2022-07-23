@@ -73,8 +73,6 @@ filter_shuffle:
 			}
 			streams[idx], streams[numStreams] = streams[numStreams], streams[idx]
 			numStreams--
-			shuffleIdx := fastrandn(uint32(idx + 1))
-			streams[idx], streams[shuffleIdx] = streams[shuffleIdx], streams[idx]
 		}
 	}
 	if numStreams < 0 {
