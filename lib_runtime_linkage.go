@@ -8,9 +8,9 @@ import (
 	"github.com/alphadose/zenq/v2/constants"
 )
 
-const cacheLinePadSize = constants.CacheLinePadSize
-
-type cacheLinePadding struct{ _ [cacheLinePadSize]byte }
+type cacheLinePadding struct {
+	_ [constants.CacheLinePadSize]byte
+}
 
 // Linking ZenQ with golang internal runtime library to allow usage of scheduling primitives
 // like goready(), mcall() etc to allow low-level scheduling of goroutines

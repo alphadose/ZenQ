@@ -1,6 +1,8 @@
 # ZenQ
 
-> A low-latency thread-safe queue in golang implemented using a lock-free ringbuffer
+> A low-latency thread-safe queue in golang implemented using a lock-free ringbuffer and runtime internals
+
+Based on the [LMAX Disruptor Pattern](https://lmax-exchange.github.io/disruptor/disruptor.html)
 
 ## Features
 
