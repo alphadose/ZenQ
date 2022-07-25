@@ -61,8 +61,9 @@ type Selectable interface {
 
 // Select selects a single element out of multiple ZenQs
 // the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
+// A maximum of 127 ZenQs can be selected from at a time owing to the size of int8 type
 func Select(streams ...Selectable) (data any, ok bool) {
-	var idx, numStreams int32 = 0, int32(len(streams) - 1)
+	var idx, numStreams int8 = 0, int8(len(streams) - 1)
 filter_shuffle:
 	for ; idx < numStreams; idx++ {
 		if streams[idx] == nil || streams[idx].IsClosed() {
@@ -86,9 +87,9 @@ filter_shuffle:
 		}
 	}
 
-	sel, g, numSignals, iter := selectionGet().(*Selection), GetG(), uint8(0), 0
+	sel, g, numSignals, iter := selectionGet().(*Selection), GetG(), uint8(0), int8(0)
 
-	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, numStreams+1, numStreams+2
+	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, int32(numStreams+1), int32(numStreams+2)
 
 	for idx = 0; idx <= numStreams; idx++ {
 		streams[idx].EnqueueSelector(sel)
@@ -102,17 +103,13 @@ retry:
 	// might cause deadlock without this case
 	if numSignals == 0 && atomic.LoadPointer(&g) != nil {
 		// wait for some ZenQ to acquire this selector's thread
-		if runtime_canSpin(iter) {
+		if runtime_canSpin(int(iter)) {
 			iter++
-			runtime_doSpin()
+			spin(30)
 		} else {
 			mcall(gosched_m)
 		}
-		// if still no one has acquired this thread's reference then its dangerous to park
-		// retry and signal all queues
-		if atomic.LoadPointer(&g) != nil {
-			goto retry
-		}
+		goto retry
 	}
 
 	// park and wait for notification
