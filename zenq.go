@@ -3,14 +3,13 @@
 
 // Known Limitations:-
 //
-// 1. Current max queue_size = 2^63
+// 1. Current max queue_size = 2^31
 // 2. The size of the queue must be a power of 2
 
 // Suggestions:-
 //
 // 1. Use runtime.LockOSThread() on the goroutine calling ZenQ.Read() for best performance provided you have > 1 cpu cores
 // 2. Use large queue sizes (>= 2^14) in SPSC mode for best gains
-//
 
 package zenq
 
@@ -20,11 +19,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"unsafe"
-)
-
-const (
-	// add this to uint64 to achieve the same thing as -1 to int64
-	uint64SubtractionConstant = 1<<64 - 1
 )
 
 // ZenQ global state enums
@@ -71,16 +65,16 @@ type (
 	ZenQ[T any] struct {
 		// The padding members 1 to 5 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
-		writerIndex uint64
-		_p1         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
-		readerIndex uint64
-		_p2         [cacheLinePadSize - unsafe.Sizeof(uint64(0))]byte
+		writerIndex uint32
+		_p1         [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
+		readerIndex uint32
+		_p2         [cacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		globalState uint32
-		indexMask   uint64
+		indexMask   uint32
 		// memory pool refs for storing and leasing parking spots for goroutines
 		alloc func() any
 		free  func(any)
-		_p3   [cacheLinePadSize - unsafe.Sizeof(uint32(0)) - unsafe.Sizeof(uint64(0)) - 2*unsafe.Sizeof(func() {})]byte
+		_p3   [cacheLinePadSize - 2*unsafe.Sizeof(uint32(0)) - 2*unsafe.Sizeof(func() {})]byte
 		SelectFactory
 		_p4      [cacheLinePadSize - unsafe.Sizeof(SelectFactory{})]byte
 		contents []*Slot[T]
@@ -89,18 +83,18 @@ type (
 )
 
 // returns the next greater power of 2 relative to val
-func nextGreaterPowerOf2(val uint64) uint64 {
-	return 1 << int64(math.Min(math.Ceil(Fastlog2(math.Max(float64(val), 1))), 63))
+func nextGreaterPowerOf2(val uint32) uint32 {
+	return 1 << int32(math.Min(math.Ceil(Fastlog2(math.Max(float64(val), 1))), 31))
 }
 
 // New returns a new queue given its payload type passed as a generic parameter
-func New[T any](size uint64) *ZenQ[T] {
+func New[T any](size uint32) *ZenQ[T] {
 	var (
-		queueSize uint64 = nextGreaterPowerOf2(size)
+		queueSize uint32 = nextGreaterPowerOf2(size)
 		contents         = make([]*Slot[T], queueSize, queueSize)
 		parkPool         = sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
-	for idx := uint64(0); idx < queueSize; idx++ {
+	for idx := uint32(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
 		contents[idx] = &Slot[T]{WriteParker: NewThreadParker[T](unsafe.Pointer(n))}
@@ -151,7 +145,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := self.contents[atomic.AddUint64(&self.writerIndex, 1)&self.indexMask]
+	slot := self.contents[atomic.AddUint32(&self.writerIndex, 1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
@@ -177,7 +171,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := self.contents[atomic.AddUint64(&self.readerIndex, 1)&self.indexMask]
+	slot := self.contents[atomic.AddUint32(&self.readerIndex, 1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -194,8 +188,8 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)
 			} else {
-				// queue is closed, rollback the reader index by 1
-				atomic.AddUint64(&self.readerIndex, uint64SubtractionConstant)
+				// queue is closed, decrement the reader index by 1
+				atomic.AddUint32(&self.readerIndex, math.MaxUint32)
 				queueOpen = false
 				return
 			}
@@ -226,7 +220,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		alreadyClosedForWrites = true
 		return
 	}
-	slot := self.contents[atomic.AddUint64(&self.writerIndex, 1)&self.indexMask]
+	slot := self.contents[atomic.AddUint32(&self.writerIndex, 1)&self.indexMask]
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
