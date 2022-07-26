@@ -74,14 +74,13 @@ type (
 		_p2         [constants.CacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		globalState uint32
 		indexMask   uint32
+		contents    unsafe.Pointer
 		// memory pool refs for storing and leasing parking spots for goroutines
 		alloc func() any
 		free  func(any)
-		_p3   [constants.CacheLinePadSize - 2*unsafe.Sizeof(uint32(0)) - 2*unsafe.Sizeof(func() {})]byte
+		_p3   [constants.CacheLinePadSize - 2*unsafe.Sizeof(uint32(0)) - 2*unsafe.Sizeof(func() {}) - unsafe.Sizeof(unsafe.Pointer(nil))]byte
 		selectFactory
-		_p4      [constants.CacheLinePadSize - unsafe.Sizeof(selectFactory{})]byte
-		contents []*slot[T]
-		_p5      cacheLinePadding
+		_p4 [constants.CacheLinePadSize - unsafe.Sizeof(selectFactory{})]byte
 	}
 )
 
@@ -94,16 +93,16 @@ func nextGreaterPowerOf2(val uint32) uint32 {
 func New[T any](size uint32) *ZenQ[T] {
 	var (
 		queueSize uint32 = nextGreaterPowerOf2(size)
-		contents         = make([]*slot[T], queueSize, queueSize)
+		contents         = make([]slot[T], queueSize, queueSize)
 		parkPool         = sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
 	for idx := uint32(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
-		contents[idx] = &slot[T]{WriteParker: NewThreadParker[T](unsafe.Pointer(n))}
+		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
 	zenq := &ZenQ[T]{
-		contents:      contents,
+		contents:      unsafe.Pointer(&contents[0]),
 		alloc:         parkPool.Get,
 		free:          parkPool.Put,
 		selectFactory: selectFactory{waitList: NewList()},
@@ -148,7 +147,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := self.contents[atomic.AddUint32(&self.writerIndex, 1)&self.indexMask]
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.contents) + uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*unsafe.Sizeof(slot[T]{})))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
@@ -174,7 +173,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := self.contents[atomic.AddUint32(&self.readerIndex, 1)&self.indexMask]
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.contents) + uintptr(atomic.AddUint32(&self.readerIndex, 1)&self.indexMask)*unsafe.Sizeof(slot[T]{})))
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
@@ -223,7 +222,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		alreadyClosedForWrites = true
 		return
 	}
-	slot := self.contents[atomic.AddUint32(&self.writerIndex, 1)&self.indexMask]
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.contents) + uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*unsafe.Sizeof(slot[T]{})))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
@@ -291,9 +290,9 @@ func (self *ZenQ[T]) Reset() {
 // Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Dump() {
 	fmt.Printf("writerIndex: %3d, readerIndex: %3d\n contents:-\n\n", self.writerIndex, self.readerIndex)
-	for idx := range self.contents {
-		fmt.Printf("%5v : State -> %5v, Item -> %5v\n", idx, self.contents[idx].State, self.contents[idx].Item)
-	}
+	// for idx := range self.contents {
+	// 	fmt.Printf("%5v : State -> %5v, Item -> %5v\n", idx, self.contents[idx].State, self.contents[idx].Item)
+	// }
 }
 
 // selectSender is an auxillary thread which remains parked by default
