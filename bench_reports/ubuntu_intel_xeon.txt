@@ -1,0 +1,62 @@
+            .-/+oossssoo+/-.               manas@dell-Precision-Tower-5810 
+        `:+ssssssssssssssssss+:`           ------------------------------- 
+      -+ssssssssssssssssssyyssss+-         OS: Ubuntu 20.04.3 LTS x86_64 
+    .ossssssssssssssssssdMMMNysssso.       Host: Precision Tower 5810 
+   /ssssssssssshdmmNNmmyNMMMMhssssss/      Kernel: 5.11.0-27-generic 
+  +ssssssssshmydMMMMMMMNddddyssssssss+     Uptime: 2 hours, 49 mins 
+ /sssssssshNMMMyhhyyyyhmNMMMNhssssssss/    Packages: 3061 (dpkg), 9 (snap) 
+.ssssssssdMMMNhsssssssssshNMMMdssssssss.   Shell: zsh 5.8 
++sssshhhyNMMNyssssssssssssyNMMMysssssss+   Resolution: 1920x1080 
+ossyNMMMNyMMhsssssssssssssshmmmhssssssso   DE: Plasma 
+ossyNMMMNyMMhsssssssssssssshmmmhssssssso   WM: KWin 
++sssshhhyNMMNyssssssssssssyNMMMysssssss+   Theme: Breeze [Plasma], Breeze [GTK2/3] 
+.ssssssssdMMMNhsssssssssshNMMMdssssssss.   Icons: breeze [Plasma], breeze [GTK2/3] 
+ /sssssssshNMMMyhhyyyyhdNMMMNhssssssss/    Terminal: terminator 
+  +sssssssssdmydMMMMMMMMddddyssssssss+     CPU: Intel Xeon E5-1620 v4 (8) @ 3.800GHz 
+   /ssssssssssshdmNNNNmyNMMMMhssssss/      GPU: NVIDIA GeForce GTX 1080 
+    .ossssssssssssssssssdMMMNysssso.       Memory: 2875MiB / 64244MiB 
+      -+sssssssssssssssssyyyssss+-
+        `:+ssssssssssssssssss+:`                                   
+            .-/+oossssoo+/-.                                       
+
+name                                     time/op
+_Chan_NumWriters1_InputSize600-8          90.8µs ± 7%
+_ZenQ_NumWriters1_InputSize600-8          52.8µs ±15%
+_Chan_NumWriters3_InputSize60000-8        12.2ms ± 5%
+_ZenQ_NumWriters3_InputSize60000-8        5.14ms ± 3%
+_Chan_NumWriters8_InputSize6000000-8       1.48s ± 9%
+_ZenQ_NumWriters8_InputSize6000000-8       429ms ± 3%
+_Chan_NumWriters100_InputSize6000000-8     1.78s ± 7%
+_ZenQ_NumWriters100_InputSize6000000-8     453ms ± 4%
+_Chan_NumWriters1000_InputSize7000000-8    3.95s ± 5%
+_ZenQ_NumWriters1000_InputSize7000000-8    545ms ± 4%
+_Chan_Million_Blocking_Writers-8           7.49s ± 1%
+_ZenQ_Million_Blocking_Writers-8           2.04s ± 5%
+
+name                                     alloc/op
+_Chan_NumWriters1_InputSize600-8           0.00B
+_ZenQ_NumWriters1_InputSize600-8           0.00B
+_Chan_NumWriters3_InputSize60000-8          202B ±81%
+_ZenQ_NumWriters3_InputSize60000-8         94.4B ±64%
+_Chan_NumWriters8_InputSize6000000-8       333B ±104%
+_ZenQ_NumWriters8_InputSize6000000-8     1.62kB ±124%
+_Chan_NumWriters100_InputSize6000000-8    41.6kB ±28%
+_ZenQ_NumWriters100_InputSize6000000-8    15.4kB ±46%
+_Chan_NumWriters1000_InputSize7000000-8    485kB ± 8%
+_ZenQ_NumWriters1000_InputSize7000000-8    136kB ± 8%
+_Chan_Million_Blocking_Writers-8           553MB ± 0%
+_ZenQ_Million_Blocking_Writers-8           123MB ± 3%
+
+name                                     allocs/op
+_Chan_NumWriters1_InputSize600-8            0.00
+_ZenQ_NumWriters1_InputSize600-8            0.00
+_Chan_NumWriters3_InputSize60000-8          0.00
+_ZenQ_NumWriters3_InputSize60000-8          0.00
+_Chan_NumWriters8_InputSize6000000-8       3.59 ±123%
+_ZenQ_NumWriters8_InputSize6000000-8        8.24 ±46%
+_Chan_NumWriters100_InputSize6000000-8       156 ±19%
+_ZenQ_NumWriters100_InputSize6000000-8      36.2 ±46%
+_Chan_NumWriters1000_InputSize7000000-8    1.80k ± 4%
+_ZenQ_NumWriters1000_InputSize7000000-8     76.4 ±31%
+_Chan_Million_Blocking_Writers-8           2.00M ± 0%
+_ZenQ_Million_Blocking_Writers-8           1.00M ± 0%

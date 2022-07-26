@@ -52,9 +52,9 @@ const (
 
 type (
 	slot[T any] struct {
-		State       uint32
-		WriteParker *ThreadParker[T]
-		Item        T
+		state       uint32
+		writeParker *ThreadParker[T]
+		item        T
 	}
 
 	selectFactory struct {
@@ -101,7 +101,7 @@ func New[T any](size uint32) *ZenQ[T] {
 	for idx := uint32(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
-		contents[idx].WriteParker = NewThreadParker[T](unsafe.Pointer(n))
+		contents[idx].writeParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
 	zenq := &ZenQ[T]{
 		strideLength:  unsafe.Sizeof(slot[T]{}),
@@ -153,14 +153,14 @@ direct_send:
 	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*self.strideLength + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
-	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
-		switch atomic.LoadUint32(&slot.State) {
+	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
+		switch atomic.LoadUint32(&slot.state) {
 		case SlotBusy:
 			wait()
 		case SlotCommitted:
 			n := self.alloc().(*parkSpot[T])
 			n.threadPtr, n.next, n.value = GetG(), nil, value
-			slot.WriteParker.Park(unsafe.Pointer(n))
+			slot.writeParker.Park(unsafe.Pointer(n))
 			mcall(fast_park)
 			return
 		case SlotEmpty:
@@ -169,8 +169,8 @@ direct_send:
 			return
 		}
 	}
-	slot.Item = value
-	atomic.StoreUint32(&slot.State, SlotCommitted)
+	slot.item = value
+	atomic.StoreUint32(&slot.state, SlotCommitted)
 	return
 }
 
@@ -179,13 +179,13 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.readerIndex, 1)&self.indexMask)*self.strideLength + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == committed
-	for !atomic.CompareAndSwapUint32(&slot.State, SlotCommitted, SlotBusy) {
-		switch atomic.LoadUint32(&slot.State) {
+	for !atomic.CompareAndSwapUint32(&slot.state, SlotCommitted, SlotBusy) {
+		switch atomic.LoadUint32(&slot.state) {
 		case SlotBusy:
 			wait()
 		case SlotEmpty:
 			var freeable *parkSpot[T]
-			if data, queueOpen, freeable = slot.WriteParker.Ready(); queueOpen {
+			if data, queueOpen, freeable = slot.writeParker.Ready(); queueOpen {
 				if freeable != nil {
 					self.free(freeable)
 				}
@@ -199,7 +199,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 				return
 			}
 		case SlotClosed:
-			if atomic.CompareAndSwapUint32(&slot.State, SlotClosed, SlotEmpty) {
+			if atomic.CompareAndSwapUint32(&slot.state, SlotClosed, SlotEmpty) {
 				atomic.StoreUint32(&self.globalState, StateFullyClosed)
 			}
 			queueOpen = false
@@ -208,8 +208,8 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			continue
 		}
 	}
-	data, queueOpen = slot.Item, true
-	atomic.StoreUint32(&slot.State, SlotEmpty)
+	data, queueOpen = slot.item, true
+	atomic.StoreUint32(&slot.state, SlotEmpty)
 	return
 }
 
@@ -228,8 +228,8 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*self.strideLength + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
-	for !atomic.CompareAndSwapUint32(&slot.State, SlotEmpty, SlotBusy) {
-		switch atomic.LoadUint32(&slot.State) {
+	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
+		switch atomic.LoadUint32(&slot.state) {
 		case SlotBusy, SlotCommitted:
 			mcall(gosched_m)
 		case SlotEmpty:
@@ -239,7 +239,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		}
 	}
 	// Closing commit
-	atomic.StoreUint32(&slot.State, SlotClosed)
+	atomic.StoreUint32(&slot.state, SlotClosed)
 	return
 }
 
@@ -293,9 +293,10 @@ func (self *ZenQ[T]) Reset() {
 // Unsafe to be called from multiple goroutines
 func (self *ZenQ[T]) Dump() {
 	fmt.Printf("writerIndex: %3d, readerIndex: %3d\n contents:-\n\n", self.writerIndex, self.readerIndex)
-	// for idx := range self.contents {
-	// 	fmt.Printf("%5v : State -> %5v, Item -> %5v\n", idx, self.contents[idx].State, self.contents[idx].Item)
-	// }
+	for idx := uintptr(0); idx <= uintptr(self.indexMask); idx++ {
+		slot := (*slot[T])(unsafe.Pointer(uintptr(self.contents) + idx*unsafe.Sizeof(slot[T]{})))
+		fmt.Printf("Slot -> %#v\n", *slot)
+	}
 }
 
 // selectSender is an auxillary thread which remains parked by default

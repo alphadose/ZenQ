@@ -169,43 +169,43 @@ Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. ben
 
 name                                     time/op
 _Chan_NumWriters1_InputSize600-8          23.4µs ± 1%
-_ZenQ_NumWriters1_InputSize600-8          17.7µs ± 0%
-_Chan_NumWriters3_InputSize60000-8        5.54ms ± 5%
-_ZenQ_NumWriters3_InputSize60000-8        2.63ms ± 2%
-_Chan_NumWriters8_InputSize6000000-8       687ms ± 2%
-_ZenQ_NumWriters8_InputSize6000000-8       243ms ± 4%
-_Chan_NumWriters100_InputSize6000000-8     1.59s ± 4%
-_ZenQ_NumWriters100_InputSize6000000-8     296ms ± 2%
-_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 0%
-_ZenQ_NumWriters1000_InputSize7000000-8    409ms ± 2%
-_Chan_Million_Blocking_Writers-8           10.4s ± 4%
-_ZenQ_Million_Blocking_Writers-8           1.83s ±10%
+_ZenQ_NumWriters1_InputSize600-8          18.0µs ± 1%
+_Chan_NumWriters3_InputSize60000-8        5.35ms ± 3%
+_ZenQ_NumWriters3_InputSize60000-8        2.39ms ± 5%
+_Chan_NumWriters8_InputSize6000000-8       674ms ± 2%
+_ZenQ_NumWriters8_InputSize6000000-8       236ms ± 2%
+_Chan_NumWriters100_InputSize6000000-8     1.58s ± 6%
+_ZenQ_NumWriters100_InputSize6000000-8     312ms ± 2%
+_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 1%
+_ZenQ_NumWriters1000_InputSize7000000-8    397ms ± 4%
+_Chan_Million_Blocking_Writers-8           11.0s ± 2%
+_ZenQ_Million_Blocking_Writers-8           2.59s ±10%
 
 name                                     alloc/op
-_Chan_NumWriters1_InputSize600-8           0.00B
-_ZenQ_NumWriters1_InputSize600-8           0.00B
-_Chan_NumWriters3_InputSize60000-8          117B ±63%
-_ZenQ_NumWriters3_InputSize60000-8        22.1B ±122%
-_Chan_NumWriters8_InputSize6000000-8     1.01kB ±196%
-_ZenQ_NumWriters8_InputSize6000000-8      1.12kB ±89%
-_Chan_NumWriters100_InputSize6000000-8    42.6kB ±37%
-_ZenQ_NumWriters100_InputSize6000000-8    11.3kB ±28%
-_Chan_NumWriters1000_InputSize7000000-8    481kB ± 7%
-_ZenQ_NumWriters1000_InputSize7000000-8   90.5kB ± 6%
+_Chan_NumWriters1_InputSize600-8           0.00B     
+_ZenQ_NumWriters1_InputSize600-8           0.00B     
+_Chan_NumWriters3_InputSize60000-8          114B ±82%
+_ZenQ_NumWriters3_InputSize60000-8        23.6B ±112%
+_Chan_NumWriters8_InputSize6000000-8       733B ±260%
+_ZenQ_NumWriters8_InputSize6000000-8     1.02kB ±121%
+_Chan_NumWriters100_InputSize6000000-8    43.7kB ±40%
+_ZenQ_NumWriters100_InputSize6000000-8    11.2kB ±54%
+_Chan_NumWriters1000_InputSize7000000-8    474kB ± 7%
+_ZenQ_NumWriters1000_InputSize7000000-8   90.0kB ± 6%
 _Chan_Million_Blocking_Writers-8           553MB ± 0%
-_ZenQ_Million_Blocking_Writers-8           123MB ± 4%
+_ZenQ_Million_Blocking_Writers-8           121MB ± 4%
 
 name                                     allocs/op
-_Chan_NumWriters1_InputSize600-8            0.00
-_ZenQ_NumWriters1_InputSize600-8            0.00
-_Chan_NumWriters3_InputSize60000-8          0.00
-_ZenQ_NumWriters3_InputSize60000-8          0.00
-_Chan_NumWriters8_InputSize6000000-8       3.43 ±162%
-_ZenQ_NumWriters8_InputSize6000000-8        5.23 ±53%
-_Chan_NumWriters100_InputSize6000000-8       158 ±20%
-_ZenQ_NumWriters100_InputSize6000000-8      26.3 ±29%
-_Chan_NumWriters1000_InputSize7000000-8    1.76k ± 2%
-_ZenQ_NumWriters1000_InputSize7000000-8     48.3 ±28%
+_Chan_NumWriters1_InputSize600-8            0.00     
+_ZenQ_NumWriters1_InputSize600-8            0.00     
+_Chan_NumWriters3_InputSize60000-8          0.00     
+_ZenQ_NumWriters3_InputSize60000-8          0.00     
+_Chan_NumWriters8_InputSize6000000-8       2.18 ±175%
+_ZenQ_NumWriters8_InputSize6000000-8        5.13 ±56%
+_Chan_NumWriters100_InputSize6000000-8       157 ±30%
+_ZenQ_NumWriters100_InputSize6000000-8      26.3 ±56%
+_Chan_NumWriters1000_InputSize7000000-8    1.76k ± 4%
+_ZenQ_NumWriters1000_InputSize7000000-8     47.1 ±29%
 _Chan_Million_Blocking_Writers-8           2.00M ± 0%
 _ZenQ_Million_Blocking_Writers-8           1.00M ± 0%
 ```
