@@ -75,12 +75,12 @@ type (
 		_p2          [constants.CacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
 		globalState  uint32
 		indexMask    uint32
-		strideLength uintptr
+		strideLength uint16
 		contents     unsafe.Pointer
 		// memory pool refs for storing and leasing parking spots for goroutines
 		alloc func() any
 		free  func(any)
-		_p3   [constants.CacheLinePadSize - 2*unsafe.Sizeof(uint32(0)) - 2*unsafe.Sizeof(func() {}) - unsafe.Sizeof(unsafe.Pointer(nil)) - unsafe.Sizeof(uintptr(0))]byte
+		_p3   [constants.CacheLinePadSize - 2*unsafe.Sizeof(uint32(0)) - 4*unsafe.Sizeof(unsafe.Pointer(nil))]byte
 		selectFactory
 		_p4 [constants.CacheLinePadSize - unsafe.Sizeof(selectFactory{})]byte
 	}
@@ -104,7 +104,7 @@ func New[T any](size uint32) *ZenQ[T] {
 		contents[idx].writeParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
 	zenq := &ZenQ[T]{
-		strideLength:  unsafe.Sizeof(slot[T]{}),
+		strideLength:  uint16(unsafe.Sizeof(slot[T]{})),
 		contents:      unsafe.Pointer(&contents[0]),
 		alloc:         parkPool.Get,
 		free:          parkPool.Put,
@@ -150,7 +150,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*self.strideLength + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr((atomic.AddUint32(&self.writerIndex, 1)&self.indexMask))*uintptr(self.strideLength) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
@@ -176,7 +176,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.readerIndex, 1)&self.indexMask)*self.strideLength + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.readerIndex, 1)&self.indexMask)*uintptr(self.strideLength) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotCommitted, SlotBusy) {
@@ -225,7 +225,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		alreadyClosedForWrites = true
 		return
 	}
-	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*self.strideLength + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*uintptr(self.strideLength) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
