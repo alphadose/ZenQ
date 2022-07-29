@@ -63,9 +63,9 @@ type Selectable interface {
 // the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
 // A maximum of 127 ZenQs can be selected from at a time owing to the size of int8 type
 func Select(streams ...Selectable) (data any, ok bool) {
-	var idx, numStreams int8 = 0, int8(len(streams) - 1)
+	numStreams := int8(len(streams) - 1)
 filter_shuffle:
-	for ; idx < numStreams; idx++ {
+	for idx := int8(0); idx < numStreams; idx++ {
 		if streams[idx] == nil || streams[idx].IsClosed() {
 			for ; numStreams >= 0 && (streams[numStreams] == nil || streams[numStreams].IsClosed()); numStreams-- {
 			}
@@ -81,7 +81,7 @@ filter_shuffle:
 		return
 	}
 
-	for idx = 0; idx <= numStreams; idx++ {
+	for idx := int8(0); idx <= numStreams; idx++ {
 		if data, ok = streams[idx].ReadFromBackLog(); ok {
 			return
 		}
@@ -91,12 +91,12 @@ filter_shuffle:
 
 	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, int32(numStreams+1), int32(numStreams+2)
 
-	for idx = 0; idx <= numStreams; idx++ {
+	for idx := int8(0); idx <= numStreams; idx++ {
 		streams[idx].EnqueueSelector(sel)
 	}
 
 retry:
-	for idx = 0; idx <= numStreams; idx++ {
+	for idx := int8(0); idx <= numStreams; idx++ {
 		numSignals += streams[idx].Signal()
 	}
 

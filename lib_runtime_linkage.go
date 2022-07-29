@@ -151,16 +151,16 @@ func ProcUnpin()
 //go:linkname memequal runtime.memequal
 func memequal(a, b unsafe.Pointer, size uintptr) bool
 
-//go:linkname Load8 atomic.Load8
+//go:linkname Load8 runtime/internal/atomic.Load8
 func Load8(ptr *uint8) uint8
 
-//go:linkname And8 atomic.And8
+//go:linkname And8 runtime/internal/atomic.And8
 func And8(ptr *uint8, val uint8)
 
-//go:linkname Or8 atomic.Or8
+//go:linkname Or8 runtime/internal/atomic.Or8
 func Or8(ptr *uint8, val uint8)
 
-//go:linkname Store8 atomic.Store8
+//go:linkname Store8 runtime/internal/atomic.Store8
 func Store8(ptr *uint8, val uint8)
 
 // custom parking function

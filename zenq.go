@@ -59,9 +59,9 @@ type (
 
 	// metadata of the queue
 	metaQ struct {
-		globalState  uint32
-		indexMask    uint32
+		globalState  uint8
 		strideLength uint8
+		indexMask    uint32
 		contents     unsafe.Pointer
 		// memory pool refs for storing and leasing parking spots for goroutines
 		alloc func() any
@@ -128,7 +128,7 @@ func New[T any](size uint32) *ZenQ[T] {
 // It returns whether the queue is currently open for writes or not
 // If not then it might be still open for reads, which can be checked by calling zenq.IsClosed()
 func (self *ZenQ[T]) Write(value T) (queueClosedForWrites bool) {
-	if atomic.LoadUint32(&self.globalState) > StateOpen {
+	if Load8(&self.globalState) > StateOpen {
 		queueClosedForWrites = true
 		return
 	}
@@ -157,7 +157,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := (*slot[T])(unsafe.Pointer(uintptr((atomic.AddUint32(&self.writerIndex, 1)&self.indexMask))*uintptr(self.strideLength) + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*uintptr((self.indexMask&atomic.AddUint32(&self.writerIndex, 1))) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
@@ -183,7 +183,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.readerIndex, 1)&self.indexMask)*uintptr(self.strideLength) + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*uintptr(self.indexMask&atomic.AddUint32(&self.readerIndex, 1)) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotCommitted, SlotBusy) {
@@ -197,7 +197,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 					self.free(freeable)
 				}
 				return
-			} else if atomic.LoadUint32(&self.globalState) != StateFullyClosed {
+			} else if Load8(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)
 			} else {
 				// queue is closed, decrement the reader index by 1
@@ -207,7 +207,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 			}
 		case SlotClosed:
 			if atomic.CompareAndSwapUint32(&slot.state, SlotClosed, SlotEmpty) {
-				atomic.StoreUint32(&self.globalState, StateFullyClosed)
+				Store8(&self.globalState, StateFullyClosed)
 			}
 			queueOpen = false
 			return
@@ -228,11 +228,12 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 // It returns if the queue was already closed for writes or not
 func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 	// This ensures a ZenQ is closed only once even if this function is called multiple times making this operation safe
-	if !atomic.CompareAndSwapUint32(&self.globalState, StateOpen, StateClosedForWrites) {
+	if Load8(&self.globalState) > StateOpen {
 		alreadyClosedForWrites = true
 		return
 	}
-	slot := (*slot[T])(unsafe.Pointer(uintptr(atomic.AddUint32(&self.writerIndex, 1)&self.indexMask)*uintptr(self.strideLength) + uintptr(self.contents)))
+	Store8(&self.globalState, StateClosedForWrites)
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*uintptr(self.indexMask&atomic.AddUint32(&self.writerIndex, 1)) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
@@ -282,7 +283,7 @@ func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
 
 // IsClosed returns whether the zenq is closed for both reads and writes
 func (self *ZenQ[T]) IsClosed() bool {
-	return atomic.LoadUint32(&self.globalState) == StateFullyClosed
+	return Load8(&self.globalState) == StateFullyClosed
 }
 
 // Reset resets the queue state
@@ -293,7 +294,7 @@ func (self *ZenQ[T]) Reset() {
 	// drain entire queue
 	for open := true; open; _, open = self.Read() {
 	}
-	atomic.StoreUint32(&self.globalState, StateOpen)
+	Store8(&self.globalState, StateOpen)
 }
 
 // Dump dumps the current queue state
