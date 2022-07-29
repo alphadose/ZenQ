@@ -57,6 +57,17 @@ type (
 		item        T
 	}
 
+	// metadata of the queue
+	metaQ struct {
+		globalState  uint32
+		indexMask    uint32
+		strideLength uint8
+		contents     unsafe.Pointer
+		// memory pool refs for storing and leasing parking spots for goroutines
+		alloc func() any
+		free  func(any)
+	}
+
 	selectFactory struct {
 		state     uint32
 		auxThread unsafe.Pointer
@@ -68,19 +79,13 @@ type (
 	ZenQ[T any] struct {
 		// The padding members 0 to 4 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
-		_p0          cacheLinePadding
-		writerIndex  uint32
-		_p1          [constants.CacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
-		readerIndex  uint32
-		_p2          [constants.CacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
-		globalState  uint32
-		indexMask    uint32
-		strideLength uint16
-		contents     unsafe.Pointer
-		// memory pool refs for storing and leasing parking spots for goroutines
-		alloc func() any
-		free  func(any)
-		_p3   [constants.CacheLinePadSize - 2*unsafe.Sizeof(uint32(0)) - 4*unsafe.Sizeof(unsafe.Pointer(nil))]byte
+		_p0         cacheLinePadding
+		writerIndex uint32
+		_p1         [constants.CacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
+		readerIndex uint32
+		_p2         [constants.CacheLinePadSize - unsafe.Sizeof(uint32(0))]byte
+		metaQ
+		_p3 [constants.CacheLinePadSize - unsafe.Sizeof(metaQ{})]byte
 		selectFactory
 		_p4 [constants.CacheLinePadSize - unsafe.Sizeof(selectFactory{})]byte
 	}
@@ -104,12 +109,14 @@ func New[T any](size uint32) *ZenQ[T] {
 		contents[idx].writeParker = NewThreadParker[T](unsafe.Pointer(n))
 	}
 	zenq := &ZenQ[T]{
-		strideLength:  uint16(unsafe.Sizeof(slot[T]{})),
-		contents:      unsafe.Pointer(&contents[0]),
-		alloc:         parkPool.Get,
-		free:          parkPool.Put,
+		metaQ: metaQ{
+			strideLength: uint8(unsafe.Sizeof(slot[T]{})),
+			contents:     unsafe.Pointer(&contents[0]),
+			alloc:        parkPool.Get,
+			free:         parkPool.Put,
+			indexMask:    queueSize - 1,
+		},
 		selectFactory: selectFactory{waitList: NewList()},
-		indexMask:     queueSize - 1,
 	}
 	go zenq.selectSender()
 	// allow the above auxillary thread to manifest
