@@ -130,7 +130,7 @@ func New[T any](size uint32) *ZenQ[T] {
 // It returns whether the queue is currently open for writes or not
 // If not then it might be still open for reads, which can be checked by calling zenq.IsClosed()
 func (self *ZenQ[T]) Write(value T) (queueClosedForWrites bool) {
-	if Load8(&self.globalState) > StateOpen {
+	if Load8(&self.globalState) != StateOpen {
 		queueClosedForWrites = true
 		return
 	}
@@ -230,7 +230,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 // It returns if the queue was already closed for writes or not
 func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 	// This ensures a ZenQ is closed only once even if this function is called multiple times making this operation safe
-	if Load8(&self.globalState) > StateOpen {
+	if Load8(&self.globalState) != StateOpen {
 		alreadyClosedForWrites = true
 		return
 	}
