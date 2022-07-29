@@ -168,44 +168,44 @@ down the atomic operations in golang. Under normal circumstances, ZenQ will outp
 Computed from benchstat of 30 benchmarks each via go test -benchmem -bench=. benchmarks/simple/*.go
 
 name                                     time/op
-_Chan_NumWriters1_InputSize600-8          23.4µs ± 1%
-_ZenQ_NumWriters1_InputSize600-8          18.0µs ± 1%
-_Chan_NumWriters3_InputSize60000-8        5.35ms ± 3%
-_ZenQ_NumWriters3_InputSize60000-8        2.39ms ± 5%
-_Chan_NumWriters8_InputSize6000000-8       674ms ± 2%
-_ZenQ_NumWriters8_InputSize6000000-8       236ms ± 2%
-_Chan_NumWriters100_InputSize6000000-8     1.58s ± 6%
-_ZenQ_NumWriters100_InputSize6000000-8     312ms ± 2%
-_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 1%
-_ZenQ_NumWriters1000_InputSize7000000-8    397ms ± 4%
-_Chan_Million_Blocking_Writers-8           11.0s ± 2%
-_ZenQ_Million_Blocking_Writers-8           2.59s ±10%
+_Chan_NumWriters1_InputSize600-8          23.2µs ± 1%
+_ZenQ_NumWriters1_InputSize600-8          17.9µs ± 1%
+_Chan_NumWriters3_InputSize60000-8        5.27ms ± 3%
+_ZenQ_NumWriters3_InputSize60000-8        2.36ms ± 2%
+_Chan_NumWriters8_InputSize6000000-8       671ms ± 2%
+_ZenQ_NumWriters8_InputSize6000000-8       234ms ± 6%
+_Chan_NumWriters100_InputSize6000000-8     1.59s ± 4%
+_ZenQ_NumWriters100_InputSize6000000-8     309ms ± 2%
+_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 0%
+_ZenQ_NumWriters1000_InputSize7000000-8    389ms ± 4%
+_Chan_Million_Blocking_Writers-8           10.4s ± 2%
+_ZenQ_Million_Blocking_Writers-8           2.32s ±21%
 
 name                                     alloc/op
-_Chan_NumWriters1_InputSize600-8           0.00B     
-_ZenQ_NumWriters1_InputSize600-8           0.00B     
-_Chan_NumWriters3_InputSize60000-8          114B ±82%
-_ZenQ_NumWriters3_InputSize60000-8        23.6B ±112%
-_Chan_NumWriters8_InputSize6000000-8       733B ±260%
-_ZenQ_NumWriters8_InputSize6000000-8     1.02kB ±121%
-_Chan_NumWriters100_InputSize6000000-8    43.7kB ±40%
-_ZenQ_NumWriters100_InputSize6000000-8    11.2kB ±54%
-_Chan_NumWriters1000_InputSize7000000-8    474kB ± 7%
-_ZenQ_NumWriters1000_InputSize7000000-8   90.0kB ± 6%
+_Chan_NumWriters1_InputSize600-8           0.00B
+_ZenQ_NumWriters1_InputSize600-8           0.00B
+_Chan_NumWriters3_InputSize60000-8          109B ±68%
+_ZenQ_NumWriters3_InputSize60000-8        24.6B ±107%
+_Chan_NumWriters8_InputSize6000000-8       802B ±241%
+_ZenQ_NumWriters8_InputSize6000000-8     1.18kB ±100%
+_Chan_NumWriters100_InputSize6000000-8    44.2kB ±41%
+_ZenQ_NumWriters100_InputSize6000000-8    10.7kB ±38%
+_Chan_NumWriters1000_InputSize7000000-8    476kB ± 8%
+_ZenQ_NumWriters1000_InputSize7000000-8   90.6kB ±10%
 _Chan_Million_Blocking_Writers-8           553MB ± 0%
-_ZenQ_Million_Blocking_Writers-8           121MB ± 4%
+_ZenQ_Million_Blocking_Writers-8           122MB ± 3%
 
 name                                     allocs/op
-_Chan_NumWriters1_InputSize600-8            0.00     
-_ZenQ_NumWriters1_InputSize600-8            0.00     
-_Chan_NumWriters3_InputSize60000-8          0.00     
-_ZenQ_NumWriters3_InputSize60000-8          0.00     
-_Chan_NumWriters8_InputSize6000000-8       2.18 ±175%
-_ZenQ_NumWriters8_InputSize6000000-8        5.13 ±56%
-_Chan_NumWriters100_InputSize6000000-8       157 ±30%
-_ZenQ_NumWriters100_InputSize6000000-8      26.3 ±56%
-_Chan_NumWriters1000_InputSize7000000-8    1.76k ± 4%
-_ZenQ_NumWriters1000_InputSize7000000-8     47.1 ±29%
+_Chan_NumWriters1_InputSize600-8            0.00
+_ZenQ_NumWriters1_InputSize600-8            0.00
+_Chan_NumWriters3_InputSize60000-8          0.00
+_ZenQ_NumWriters3_InputSize60000-8          0.00
+_Chan_NumWriters8_InputSize6000000-8       2.76 ±190%
+_ZenQ_NumWriters8_InputSize6000000-8        5.47 ±83%
+_Chan_NumWriters100_InputSize6000000-8       159 ±26%
+_ZenQ_NumWriters100_InputSize6000000-8      25.1 ±39%
+_Chan_NumWriters1000_InputSize7000000-8    1.76k ± 6%
+_ZenQ_NumWriters1000_InputSize7000000-8     47.3 ±31%
 _Chan_Million_Blocking_Writers-8           2.00M ± 0%
 _ZenQ_Million_Blocking_Writers-8           1.00M ± 0%
 ```
@@ -219,38 +219,38 @@ The above results show that ZenQ is more efficient than channels in all 3 metric
 
 ## Cherry on the Cake
 
-In SPSC mode ZenQ is faster than channels by **78 seconds** in case of input size 6 * 10<sup>8</sup>
+In SPSC mode ZenQ is faster than channels by **92 seconds** in case of input size of 6 * 10<sup>8</sup> elements
 
 ```bash
 ❯ go run benchmarks/simple/main.go
 
 With Input Batch Size: 60 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 33.417µs
-ZenQ Runner completed transfer in: 19.667µs
+Native Channel Runner completed transfer in: 26.916µs
+ZenQ Runner completed transfer in: 20.292µs
 ====================================================================
 
 With Input Batch Size: 600 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 86.5µs
-ZenQ Runner completed transfer in: 54µs
+Native Channel Runner completed transfer in: 135.75µs
+ZenQ Runner completed transfer in: 105.792µs
 ====================================================================
 
 With Input Batch Size: 6000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1.144208ms
-ZenQ Runner completed transfer in: 842.083µs
+Native Channel Runner completed transfer in: 2.100209ms
+ZenQ Runner completed transfer in: 510.792µs
 ====================================================================
 
 With Input Batch Size: 6000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1.122868875s
-ZenQ Runner completed transfer in: 377.636334ms
+Native Channel Runner completed transfer in: 1.241481917s
+ZenQ Runner completed transfer in: 226.068209ms
 ====================================================================
 
 With Input Batch Size: 600000000 and Num Concurrent Writers: 1
 
-Native Channel Runner completed transfer in: 1m51.694234834s
-ZenQ Runner completed transfer in: 33.276190167s
+Native Channel Runner completed transfer in: 1m55.074638875s
+ZenQ Runner completed transfer in: 22.582667917s
 ====================================================================
 ```

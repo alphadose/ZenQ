@@ -1,0 +1,41 @@
+name                                     time/op
+_Chan_NumWriters1_InputSize600-8          23.2µs ± 1%
+_ZenQ_NumWriters1_InputSize600-8          17.9µs ± 1%
+_Chan_NumWriters3_InputSize60000-8        5.27ms ± 3%
+_ZenQ_NumWriters3_InputSize60000-8        2.36ms ± 2%
+_Chan_NumWriters8_InputSize6000000-8       671ms ± 2%
+_ZenQ_NumWriters8_InputSize6000000-8       234ms ± 6%
+_Chan_NumWriters100_InputSize6000000-8     1.59s ± 4%
+_ZenQ_NumWriters100_InputSize6000000-8     309ms ± 2%
+_Chan_NumWriters1000_InputSize7000000-8    1.97s ± 0%
+_ZenQ_NumWriters1000_InputSize7000000-8    389ms ± 4%
+_Chan_Million_Blocking_Writers-8           10.4s ± 2%
+_ZenQ_Million_Blocking_Writers-8           2.32s ±21%
+
+name                                     alloc/op
+_Chan_NumWriters1_InputSize600-8           0.00B
+_ZenQ_NumWriters1_InputSize600-8           0.00B
+_Chan_NumWriters3_InputSize60000-8          109B ±68%
+_ZenQ_NumWriters3_InputSize60000-8        24.6B ±107%
+_Chan_NumWriters8_InputSize6000000-8       802B ±241%
+_ZenQ_NumWriters8_InputSize6000000-8     1.18kB ±100%
+_Chan_NumWriters100_InputSize6000000-8    44.2kB ±41%
+_ZenQ_NumWriters100_InputSize6000000-8    10.7kB ±38%
+_Chan_NumWriters1000_InputSize7000000-8    476kB ± 8%
+_ZenQ_NumWriters1000_InputSize7000000-8   90.6kB ±10%
+_Chan_Million_Blocking_Writers-8           553MB ± 0%
+_ZenQ_Million_Blocking_Writers-8           122MB ± 3%
+
+name                                     allocs/op
+_Chan_NumWriters1_InputSize600-8            0.00
+_ZenQ_NumWriters1_InputSize600-8            0.00
+_Chan_NumWriters3_InputSize60000-8          0.00
+_ZenQ_NumWriters3_InputSize60000-8          0.00
+_Chan_NumWriters8_InputSize6000000-8       2.76 ±190%
+_ZenQ_NumWriters8_InputSize6000000-8        5.47 ±83%
+_Chan_NumWriters100_InputSize6000000-8       159 ±26%
+_ZenQ_NumWriters100_InputSize6000000-8      25.1 ±39%
+_Chan_NumWriters1000_InputSize7000000-8    1.76k ± 6%
+_ZenQ_NumWriters1000_InputSize7000000-8     47.3 ±31%
+_Chan_Million_Blocking_Writers-8           2.00M ± 0%
+_ZenQ_Million_Blocking_Writers-8           1.00M ± 0%

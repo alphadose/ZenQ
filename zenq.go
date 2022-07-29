@@ -51,6 +51,7 @@ const (
 )
 
 type (
+	// a single slot in the queue
 	slot[T any] struct {
 		state       uint32
 		writeParker *ThreadParker[T]
@@ -68,11 +69,12 @@ type (
 		free  func(any)
 	}
 
+	// container for the selection events among multiple queues
 	selectFactory struct {
-		state     uint32
-		auxThread unsafe.Pointer
-		backlog   unsafe.Pointer
-		waitList  List
+		selectionState uint32
+		auxThread      unsafe.Pointer
+		backlog        unsafe.Pointer
+		waitList       List
 	}
 
 	// ZenQ is the CPU cache optimized ringbuffer implementation
@@ -99,9 +101,9 @@ func nextGreaterPowerOf2(val uint32) uint32 {
 // New returns a new queue given its payload type passed as a generic parameter
 func New[T any](size uint32) *ZenQ[T] {
 	var (
-		queueSize uint32 = nextGreaterPowerOf2(size)
-		contents         = make([]slot[T], queueSize, queueSize)
-		parkPool         = sync.Pool{New: func() any { return new(parkSpot[T]) }}
+		queueSize = nextGreaterPowerOf2(size)
+		contents  = make([]slot[T], queueSize, queueSize)
+		parkPool  = sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
 	for idx := uint32(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
@@ -269,11 +271,12 @@ func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
 
 // Signal is the mechanism by which a selector notifies this ZenQ's auxillary thread to contest for the selection
 func (self *ZenQ[T]) Signal() uint8 {
-	if !atomic.CompareAndSwapUint32(&self.state, SelectionOpen, SelectionRunning) {
+	if !atomic.CompareAndSwapUint32(&self.selectionState, SelectionOpen, SelectionRunning) {
 		return 0
+	} else {
+		safe_ready(self.auxThread)
+		return 1
 	}
-	safe_ready(self.auxThread)
-	return 1
 }
 
 // EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist
@@ -366,6 +369,6 @@ func (self *ZenQ[T]) selectSender() {
 			var i T = data
 			atomic.StorePointer(&self.backlog, unsafe.Pointer(&i))
 		}
-		atomic.StoreUint32(&self.state, SelectionOpen)
+		atomic.StoreUint32(&self.selectionState, SelectionOpen)
 	}
 }
