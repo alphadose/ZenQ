@@ -4,13 +4,12 @@
 
 // Known Limitations:-
 //
-// 1. Max queue_size = 2^31
+// 1. Max queue_size = 2^16
 // 2. The queue_size is a power of 2, in case a different size is provided then queue_size is rounded up to the next greater power of 2
 
 // Suggestions:-
 //
 // 1. Use runtime.LockOSThread() on the goroutine calling ZenQ.Read() for lowest latency provided you have > 1 cpu cores
-//
 
 package zenq
 
@@ -23,6 +22,8 @@ import (
 
 	"github.com/alphadose/zenq/v2/constants"
 )
+
+const maxQueueSize uint32 = 1 << 16
 
 // ZenQ global state enums
 const (
@@ -60,9 +61,12 @@ type (
 
 	// metadata of the queue
 	metaQ struct {
-		globalState  uint8
-		strideLength uint8
-		indexMask    uint32
+		globalState uint8
+		// NOTE->self: strideLength and indexMask can be further optimized to uint8 for specialized ZenQs
+		// with known data types instead of generic type
+		// using variables with lower sizes decreases memory bandwidth consumption and increases speed
+		strideLength uint16
+		indexMask    uint16
 		contents     unsafe.Pointer
 		// memory pool refs for storing and leasing parking spots for goroutines
 		alloc func() any
@@ -105,6 +109,9 @@ func New[T any](size uint32) *ZenQ[T] {
 		contents  = make([]slot[T], queueSize, queueSize)
 		parkPool  = sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
+	if queueSize > maxQueueSize {
+		throw("maximum size of queue can be 2^16")
+	}
 	for idx := uint32(0); idx < queueSize; idx++ {
 		n := parkPool.Get().(*parkSpot[T])
 		n.threadPtr, n.next = nil, nil
@@ -112,11 +119,11 @@ func New[T any](size uint32) *ZenQ[T] {
 	}
 	zenq := &ZenQ[T]{
 		metaQ: metaQ{
-			strideLength: uint8(unsafe.Sizeof(slot[T]{})),
+			strideLength: uint16(unsafe.Sizeof(slot[T]{})),
 			contents:     unsafe.Pointer(&contents[0]),
 			alloc:        parkPool.Get,
 			free:         parkPool.Put,
-			indexMask:    queueSize - 1,
+			indexMask:    uint16(queueSize - 1),
 		},
 		selectFactory: selectFactory{waitList: NewList()},
 	}
@@ -159,7 +166,7 @@ direct_send:
 		goto direct_send
 	}
 
-	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*uintptr((self.indexMask&atomic.AddUint32(&self.writerIndex, 1))) + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*(uintptr(self.indexMask)&uintptr(atomic.AddUint32(&self.writerIndex, 1))) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
@@ -185,7 +192,7 @@ direct_send:
 
 // Read reads a value from the queue, you can once read once per object
 func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
-	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*uintptr(self.indexMask&atomic.AddUint32(&self.readerIndex, 1)) + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*(uintptr(self.indexMask)&uintptr(atomic.AddUint32(&self.readerIndex, 1))) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == committed
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotCommitted, SlotBusy) {
@@ -235,7 +242,7 @@ func (self *ZenQ[T]) Close() (alreadyClosedForWrites bool) {
 		return
 	}
 	Store8(&self.globalState, StateClosedForWrites)
-	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*uintptr(self.indexMask&atomic.AddUint32(&self.writerIndex, 1)) + uintptr(self.contents)))
+	slot := (*slot[T])(unsafe.Pointer(uintptr(self.strideLength)*(uintptr(self.indexMask)&uintptr(atomic.AddUint32(&self.writerIndex, 1))) + uintptr(self.contents)))
 
 	// CAS -> change slot_state to busy if slot_state == empty
 	for !atomic.CompareAndSwapUint32(&slot.state, SlotEmpty, SlotBusy) {
