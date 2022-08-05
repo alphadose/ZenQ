@@ -108,9 +108,9 @@ func New[T any](size uint32) *ZenQ[T] {
 		parkPool  = sync.Pool{New: func() any { return new(parkSpot[T]) }}
 	)
 	for idx := uint32(0); idx < queueSize; idx++ {
-		n := parkPool.Get().(*parkSpot[T])
-		n.threadPtr, n.next = nil, nil
-		contents[idx].writeParker = NewThreadParker[T](unsafe.Pointer(n))
+		spot := parkPool.Get().(*parkSpot[T])
+		spot.threadPtr = nil
+		contents[idx].writeParker = NewThreadParker(spot)
 	}
 	zenq := &ZenQ[T]{
 		metaQ: metaQ{
@@ -170,8 +170,9 @@ direct_send:
 			wait()
 		case SlotCommitted:
 			n := self.alloc().(*parkSpot[T])
-			n.threadPtr, n.next, n.value = GetG(), nil, value
-			slot.writeParker.Park(unsafe.Pointer(n))
+			n.threadPtr, n.value = GetG(), value
+			n.next.Store(nil)
+			slot.writeParker.Park(n)
 			mcall(fast_park)
 			return
 		case SlotEmpty:
