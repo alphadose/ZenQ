@@ -143,13 +143,8 @@ direct_send:
 	if s := self.waitList.Dequeue(); s != nil {
 		sel := (*Selection)(s)
 		if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
-			if !self.IsClosed() {
-				// direct send to selector
-				*sel.Data = value
-			} else {
-				// send nil from closed channel
-				*sel.Data = nil
-			}
+			// direct send to selector
+			*sel.Data = value
 			// notify selector
 			safe_ready(selThread)
 			sel.DecrementReferenceCount()
@@ -196,9 +191,7 @@ func (self *ZenQ[T]) Read() (data T, queueOpen bool) {
 		case SlotEmpty:
 			var freeable *parkSpot[T]
 			if data, queueOpen, freeable = slot.writeParker.Ready(); queueOpen {
-				if freeable != nil {
-					self.free(freeable)
-				}
+				self.free(freeable)
 				return
 			} else if Load8(&self.globalState) != StateFullyClosed {
 				mcall(gosched_m)

@@ -21,11 +21,6 @@ type Selection struct {
 	referenceCount int32
 }
 
-// IncrementReferenceCount does exactly what it says
-func (sel *Selection) IncrementReferenceCount() {
-	atomic.AddInt32(&sel.referenceCount, 1)
-}
-
 // DecrementReferenceCount decrements the reference count by 1 and puts the object back into the pool if it reaches 0
 func (sel *Selection) DecrementReferenceCount() {
 	if atomic.AddInt32(&sel.referenceCount, -1) == 0 {
