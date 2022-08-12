@@ -49,7 +49,7 @@ func zenqSelector() {
 
 	var startTime time.Time = time.Now()
 	for i := 0; i < throughput; i++ {
-		if _, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
+		if d := zenq.Select(zq1, zq2, zq3, zq4); d != nil {
 			ctr++
 		}
 	}

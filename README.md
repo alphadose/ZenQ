@@ -98,7 +98,7 @@ func main() {
 	for i := 0; i < 40; i++ {
 
 		// Selection occurs here
-		if data, ok := zenq.Select(zq1, zq2, zq3, zq4); ok {
+		if data := zenq.Select(zq1, zq2, zq3, zq4); data != nil {
 			switch data.(type) {
 			case int:
 				fmt.Printf("Received int %d\n", data)

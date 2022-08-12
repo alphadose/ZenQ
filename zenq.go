@@ -143,15 +143,12 @@ direct_send:
 	if s := self.waitList.Dequeue(); s != nil {
 		sel := (*Selection)(s)
 		if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
-			if self.IsClosed() {
-				if sel.SignalQueueClosure() {
-					safe_ready(selThread)
-				}
-				sel.DecrementReferenceCount()
-				return
+			if !self.IsClosed() {
+				// direct send to selector
+				*sel.Data = value
+			} else {
+				*sel.Data = nil
 			}
-			// direct send to selector
-			sel.Data = value
 			// notify selector
 			safe_ready(selThread)
 			sel.DecrementReferenceCount()
@@ -265,9 +262,9 @@ func (self *ZenQ[T]) CloseAsync() {
 // The following 4 functions below implement the Selectable interface
 
 // ReadFromBackLog tries to read a data from backlog if available
-func (self *ZenQ[T]) ReadFromBackLog() (data any, ok bool) {
+func (self *ZenQ[T]) ReadFromBackLog() (data any) {
 	if d := self.backlog.Swap(nil); d != nil {
-		data, ok = *((*T)(d)), true
+		data = *((*T)(d))
 	}
 	return
 }
@@ -341,18 +338,12 @@ func (self *ZenQ[T]) selectSender() {
 			if sel = self.waitList.Dequeue(); sel != nil {
 				if threadPtr = atomic.SwapPointer(sel.ThreadPtr, nil); threadPtr != nil {
 					// implementaion of sending from closed channel to selector mechanism
-					if !queueOpen {
-						// Signal to the selector that this queue is closed
-						if sel.SignalQueueClosure() {
-							// unblock the selector thread if all queues are closed so that it returns nil, false
-							safe_ready(threadPtr)
-						}
-						// lazily decrement reference count until it is finally collected by the memory pool
-						sel.DecrementReferenceCount()
-						continue
+					if queueOpen {
+						// write to the selector
+						*sel.Data = data
+					} else {
+						*sel.Data = nil
 					}
-					// write to the selector
-					sel.Data = data
 					// notify selector
 					safe_ready(threadPtr)
 					readState = false

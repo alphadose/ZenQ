@@ -17,20 +17,8 @@ var (
 // This object is used for selection notification
 type Selection struct {
 	ThreadPtr      *unsafe.Pointer
-	Data           any
-	numQueues      int32
+	Data           *any
 	referenceCount int32
-}
-
-// SignalQueueClosure signals the closure of one ZenQ to the selector thread
-// it returns if all queues were closed or not in which case the calling thread must goready() the selector thread
-func (sel *Selection) SignalQueueClosure() bool {
-	return atomic.AddInt32(&sel.numQueues, -1) == 0
-}
-
-// AllQueuesClosed returns whether all the queues present in selection are closed or not
-func (sel *Selection) AllQueuesClosed() bool {
-	return atomic.LoadInt32(&sel.numQueues) == 0
 }
 
 // IncrementReferenceCount does exactly what it says
@@ -51,14 +39,14 @@ func (sel *Selection) DecrementReferenceCount() {
 type Selectable interface {
 	IsClosed() bool
 	EnqueueSelector(*Selection)
-	ReadFromBackLog() (data any, ok bool)
+	ReadFromBackLog() (data any)
 	Signal() uint8
 }
 
 // Select selects a single element out of multiple ZenQs
 // the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
 // A maximum of 127 ZenQs can be selected from at a time owing to the size of int8 type
-func Select(streams ...Selectable) (data any, ok bool) {
+func Select(streams ...Selectable) (data any) {
 	numStreams := int8(len(streams) - 1)
 filter:
 	for idx := int8(0); idx < numStreams; idx++ {
@@ -73,19 +61,18 @@ filter:
 		}
 	}
 	if numStreams < 0 {
-		ok = false
 		return
 	}
 
 	for idx := int8(0); idx <= numStreams; idx++ {
-		if data, ok = streams[idx].ReadFromBackLog(); ok {
+		if data = streams[idx].ReadFromBackLog(); data != nil {
 			return
 		}
 	}
 
 	sel, g, numSignals, iter := selectionGet().(*Selection), GetG(), uint8(0), int8(0)
 
-	sel.ThreadPtr, sel.Data, sel.numQueues, sel.referenceCount = &g, nil, int32(numStreams+1), int32(numStreams+2)
+	sel.ThreadPtr, sel.Data, sel.referenceCount = &g, &data, int32(numStreams+1)
 
 	for idx := int8(0); idx <= numStreams; idx++ {
 		streams[idx].EnqueueSelector(sel)
@@ -110,8 +97,5 @@ retry:
 
 	// park and wait for notification
 	mcall(fast_park)
-
-	data, ok = sel.Data, !sel.AllQueuesClosed()
-	sel.DecrementReferenceCount()
 	return
 }
