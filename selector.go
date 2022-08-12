@@ -8,13 +8,10 @@ import (
 
 // global memory pool for holding selection objects
 var (
-	selectionPool = sync.Pool{}
+	selectionPool = sync.Pool{New: func() any { return new(Selection) }}
 	selectionGet  = selectionPool.Get
+	selectionPut  = selectionPool.Put
 )
-
-func init() {
-	selectionPool.New = func() any { return &Selection{free: selectionPool.Put} }
-}
 
 // Selection is an object shared by a selector and its children ZenQs
 // This object is used for selection notification
@@ -23,7 +20,6 @@ type Selection struct {
 	Data           any
 	numQueues      int32
 	referenceCount int32
-	free           func(any)
 }
 
 // SignalQueueClosure signals the closure of one ZenQ to the selector thread
@@ -47,7 +43,7 @@ func (sel *Selection) DecrementReferenceCount() {
 	if atomic.AddInt32(&sel.referenceCount, -1) == 0 {
 		sel.ThreadPtr, sel.Data = nil, nil
 		// reuse this object in another selection event thereby saving memory
-		sel.free(sel)
+		selectionPut(sel)
 	}
 }
 
@@ -64,13 +60,13 @@ type Selectable interface {
 // A maximum of 127 ZenQs can be selected from at a time owing to the size of int8 type
 func Select(streams ...Selectable) (data any, ok bool) {
 	numStreams := int8(len(streams) - 1)
-filter_shuffle:
+filter:
 	for idx := int8(0); idx < numStreams; idx++ {
 		if streams[idx] == nil || streams[idx].IsClosed() {
 			for ; numStreams >= 0 && (streams[numStreams] == nil || streams[numStreams].IsClosed()); numStreams-- {
 			}
 			if idx >= numStreams {
-				break filter_shuffle
+				break filter
 			}
 			streams[idx], streams[numStreams] = streams[numStreams], streams[idx]
 			numStreams--
