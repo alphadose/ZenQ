@@ -83,15 +83,15 @@ type (
 	ZenQ[T any] struct {
 		// The padding members 0 to 4 below are here to ensure each item is on a separate cache line.
 		// This prevents false sharing and hence improves performance.
-		_p0         cacheLinePadding
+		_           cacheLinePadding
 		writerIndex atomic.Uint32
-		_p1         [constants.CacheLinePadSize - unsafe.Sizeof(atomic.Uint32{})]byte
+		_           [constants.CacheLinePadSize - unsafe.Sizeof(atomic.Uint32{})]byte
 		readerIndex atomic.Uint32
-		_p2         [constants.CacheLinePadSize - unsafe.Sizeof(atomic.Uint32{})]byte
+		_           [constants.CacheLinePadSize - unsafe.Sizeof(atomic.Uint32{})]byte
 		metaQ
-		_p3 [constants.CacheLinePadSize - unsafe.Sizeof(metaQ{})]byte
+		_ [constants.CacheLinePadSize - unsafe.Sizeof(metaQ{})]byte
 		selectFactory[T]
-		_p4 [constants.CacheLinePadSize - unsafe.Sizeof(selectFactory[T]{})]byte
+		_ [constants.CacheLinePadSize - unsafe.Sizeof(selectFactory[T]{})]byte
 	}
 )
 
@@ -147,6 +147,7 @@ direct_send:
 				// direct send to selector
 				*sel.Data = value
 			} else {
+				// send nil from closed channel
 				*sel.Data = nil
 			}
 			// notify selector
@@ -342,6 +343,7 @@ func (self *ZenQ[T]) selectSender() {
 						// write to the selector
 						*sel.Data = data
 					} else {
+						// send nil from closed channel
 						*sel.Data = nil
 					}
 					// notify selector

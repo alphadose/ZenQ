@@ -44,8 +44,8 @@ type Selectable interface {
 }
 
 // Select selects a single element out of multiple ZenQs
-// the second parameter tells if all ZenQs were closed or not before reading, in which case the data returned is nil
 // A maximum of 127 ZenQs can be selected from at a time owing to the size of int8 type
+// `nil` is returned if all streams are closed or if a stream gets closed during the selection process
 func Select(streams ...Selectable) (data any) {
 	numStreams := int8(len(streams) - 1)
 filter:
@@ -61,6 +61,7 @@ filter:
 		}
 	}
 	if numStreams < 0 {
+		data = nil
 		return
 	}
 
