@@ -1,0 +1,68 @@
+  `.::///+:/-.        --///+//-:``    alphadose@neverwinter
+ `+oooooooooooo:   `+oooooooooooo:    -------------------
+  /oooo++//ooooo:  ooooo+//+ooooo.    OS: Raspbian GNU/Linux 11 (bullseye) armv7l
+  `+ooooooo:-:oo-  +o+::/ooooooo:     Host: Raspberry Pi 4 Model B Rev 1.5
+   `:oooooooo+``    `.oooooooo+-      Kernel: 5.15.32-v7l+
+     `:++ooo/.        :+ooo+/.`       Uptime: 1 hour, 58 mins
+        ...`  `.----.` ``..           Packages: 569 (dpkg)
+     .::::-``:::::::::.`-:::-`        Shell: bash 5.1.4
+    -:::-`   .:::::::-`  `-:::-       Terminal: /dev/pts/0
+   `::.  `.--.`  `` `.---.``.::`      CPU: BCM2711 (4) @ 1.800GHz
+       .::::::::`  -::::::::` `       Memory: 68MiB / 3838MiB
+ .::` .:::::::::- `::::::::::``::.
+-:::` ::::::::::.  ::::::::::.`:::-
+::::  -::::::::.   `-::::::::  ::::
+-::-   .-:::-.``....``.-::-.   -::-
+ .. ``       .::::::::.     `..`..
+   -:::-`   -::::::::::`  .:::::`
+   :::::::` -::::::::::` :::::::.
+   .:::::::  -::::::::. ::::::::
+    `-:::::`   ..--.`   ::::::.
+      `...`  `...--..`  `...`
+            .::::::::::
+             `.-::::-`
+
+
+goos: linux
+goarch: arm
+name                                     time/op
+_Chan_NumWriters1_InputSize600-4          230µs ± 4%
+_ZenQ_NumWriters1_InputSize600-4          186µs ± 5%
+_Chan_NumWriters3_InputSize60000-4       28.2ms ± 3%
+_ZenQ_NumWriters3_InputSize60000-4       12.8ms ± 0%
+_Chan_NumWriters8_InputSize6000000-4      4.14s ±10%
+_ZenQ_NumWriters8_InputSize6000000-4      1.32s ± 1%
+_Chan_NumWriters100_InputSize6000000-4    5.97s ± 5%
+_ZenQ_NumWriters100_InputSize6000000-4    1.48s ± 5%
+_Chan_NumWriters1000_InputSize7000000-4   7.23s ± 6%
+_ZenQ_NumWriters1000_InputSize7000000-4   2.09s ± 4%
+_Chan_Million_Blocking_Writers-4          20.3s ± 2%
+_ZenQ_Million_Blocking_Writers-4          6.96s ± 4%
+
+name                                     alloc/op
+_Chan_NumWriters1_InputSize600-4          0.00B
+_ZenQ_NumWriters1_InputSize600-4          0.00B
+_Chan_NumWriters3_InputSize60000-4         227B ±27%
+_ZenQ_NumWriters3_InputSize60000-4        77.9B ±91%
+_Chan_NumWriters8_InputSize6000000-4      499B ±189%
+_ZenQ_NumWriters8_InputSize6000000-4     1.49kB ± 4%
+_Chan_NumWriters100_InputSize6000000-4   27.5kB ±19%
+_ZenQ_NumWriters100_InputSize6000000-4   27.7kB ±42%
+_Chan_NumWriters1000_InputSize7000000-4   290kB ± 5%
+_ZenQ_NumWriters1000_InputSize7000000-4   135kB ± 8%
+_Chan_Million_Blocking_Writers-4          325MB ± 0%
+_ZenQ_Million_Blocking_Writers-4         76.2MB ± 3%
+
+name                                     allocs/op
+_Chan_NumWriters1_InputSize600-4           0.00
+_ZenQ_NumWriters1_InputSize600-4           0.00
+_Chan_NumWriters3_InputSize60000-4         1.00 ± 0%
+_ZenQ_NumWriters3_InputSize60000-4         0.00
+_Chan_NumWriters8_InputSize6000000-4      4.30 ±109%
+_ZenQ_NumWriters8_InputSize6000000-4       19.2 ± 9%
+_Chan_NumWriters100_InputSize6000000-4      171 ±13%
+_ZenQ_NumWriters100_InputSize6000000-4      194 ±25%
+_Chan_NumWriters1000_InputSize7000000-4   1.84k ± 3%
+_ZenQ_NumWriters1000_InputSize7000000-4   1.09k ± 4%
+_Chan_Million_Blocking_Writers-4          2.00M ± 0%
+_ZenQ_Million_Blocking_Writers-4          1.00M ± 0%

@@ -1,3 +1,23 @@
+                    'c.          alphadose@ReiEki.local
+                 ,xNMM.          ----------------------
+               .OMMMMo           OS: macOS 12.3 21E230 arm64
+               OMMM0,            Host: MacBookAir10,1
+     .;loddo:' loolloddol;.      Kernel: 21.4.0
+   cKMMMMMMMMMMNWMMMMMMMMMM0:    Uptime: 6 hours, 27 mins
+ .KMMMMMMMMMMMMMMMMMMMMMMMWd.    Packages: 98 (brew)
+ XMMMMMMMMMMMMMMMMMMMMMMMX.      Shell: zsh 5.8
+;MMMMMMMMMMMMMMMMMMMMMMMM:       Resolution: 1440x900
+:MMMMMMMMMMMMMMMMMMMMMMMM:       DE: Aqua
+.MMMMMMMMMMMMMMMMMMMMMMMMX.      WM: Rectangle
+ kMMMMMMMMMMMMMMMMMMMMMMMMWd.    Terminal: iTerm2
+ .XMMMMMMMMMMMMMMMMMMMMMMMMMMk   Terminal Font: FiraCodeNerdFontComplete-Medium 16 (normal) / FiraCodeNerdFontComplete-Medium 14 (non-ascii)
+  .XMMMMMMMMMMMMMMMMMMMMMMMMK.   CPU: Apple M1
+    kMMMMMMMMMMMMMMMMMMMMMMd     GPU: Apple M1
+     ;KMMMMMMMWXXWMMMMMMMk.      Memory: 1345MiB / 8192MiB
+       .cooc,.    .,coo:.
+
+
+
 name                                     time/op
 _Chan_NumWriters1_InputSize600-8          23.2µs ± 1%
 _ZenQ_NumWriters1_InputSize600-8          17.9µs ± 1%
