@@ -3,6 +3,7 @@ package zenq
 import (
 	"sync"
 	"sync/atomic"
+	"unsafe"
 )
 
 // global memory pool for storing and leasing node objects
@@ -23,7 +24,7 @@ type List struct {
 // NewList returns a new list
 func NewList() List {
 	n := nodeGet().(*node)
-	n.value = nil
+	n.threadPtr, n.dataOut = nil, nil
 	n.next.Store(nil)
 	var ptr atomic.Pointer[node]
 	ptr.Store(n)
@@ -32,17 +33,18 @@ func NewList() List {
 
 // a single node in the linked list
 type node struct {
-	next  atomic.Pointer[node]
-	value *Selection
+	next      atomic.Pointer[node]
+	threadPtr *unsafe.Pointer
+	dataOut   *any
 }
 
 // Enqueue inserts a value into the list
-func (l *List) Enqueue(value *Selection) {
+func (l *List) Enqueue(threadPtr *unsafe.Pointer, dataOut *any) {
 	var (
 		n          = nodeGet().(*node)
 		tail, next *node
 	)
-	n.value = value
+	n.threadPtr, n.dataOut = threadPtr, dataOut
 	for {
 		tail = l.tail.Load()
 		next = tail.next.Load()
@@ -62,7 +64,7 @@ func (l *List) Enqueue(value *Selection) {
 
 // Dequeue removes and returns the value at the head of the queue to the memory pool
 // It returns nil if the list is empty
-func (l *List) Dequeue() (value *Selection) {
+func (l *List) Dequeue() (threadPtr *unsafe.Pointer, dataOut *any) {
 	var head, tail, next *node
 	for {
 		head = l.head.Load()
@@ -71,16 +73,16 @@ func (l *List) Dequeue() (value *Selection) {
 		if head == l.head.Load() { // are head, tail, and next consistent?
 			if head == tail { // is list empty or tail falling behind?
 				if next == nil { // is list empty?
-					return nil
+					return nil, nil
 				}
 				// tail is falling behind.  try to advance it
 				l.tail.CompareAndSwap(tail, next)
 			} else {
 				// read value before CAS_node otherwise another dequeue might free the next node
-				value = next.value
+				threadPtr, dataOut = next.threadPtr, next.dataOut
 				if l.head.CompareAndSwap(head, next) {
 					// sysFreeOS(unsafe.Pointer(head), nodeSize)
-					head.value = nil
+					head.threadPtr, head.dataOut = nil, nil
 					head.next.Store(nil)
 					nodePut(head)
 					return // Dequeue is done.  return

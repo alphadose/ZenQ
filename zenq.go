@@ -140,11 +140,10 @@ func (self *ZenQ[T]) Write(value T) (queueClosedForWrites bool) {
 	// Try to send directly to selector when possible or else just dequeue unselected references
 	// in order to reduce the burden on the auxillary thread and save cpu time
 direct_send:
-	if s := self.waitList.Dequeue(); s != nil {
-		sel := (*Selection)(s)
-		if selThread := atomic.SwapPointer(sel.ThreadPtr, nil); selThread != nil {
+	if threadPtr, dataOut := self.waitList.Dequeue(); threadPtr != nil {
+		if selThread := atomic.SwapPointer(threadPtr, nil); selThread != nil {
 			// direct send to selector
-			*sel.Data = value
+			*dataOut = value
 			// notify selector
 			safe_ready(selThread)
 			return
@@ -272,8 +271,8 @@ func (self *ZenQ[T]) Signal() uint8 {
 }
 
 // EnqueueSelector pushes a calling selector to this ZenQ's selector waitlist
-func (self *ZenQ[T]) EnqueueSelector(sel *Selection) {
-	self.waitList.Enqueue(sel)
+func (self *ZenQ[T]) EnqueueSelector(threadPtr *unsafe.Pointer, dataOut *any) {
+	self.waitList.Enqueue(threadPtr, dataOut)
 }
 
 // IsClosed returns whether the zenq is closed for both reads and writes
@@ -310,9 +309,10 @@ func (self *ZenQ[T]) selectSender() {
 	atomic.StorePointer(&self.auxThread, GetG())
 	var (
 		data                 T
-		sel                  *Selection
 		threadPtr            unsafe.Pointer
 		readState, queueOpen bool = false, true
+		selectorThread       *unsafe.Pointer
+		dataOut              *any
 	)
 
 	for {
@@ -327,15 +327,15 @@ func (self *ZenQ[T]) selectSender() {
 		for {
 			// keep dequeuing selectors from waitlist and try to acquire one
 			// if acquired write to selector, ready it and go back to parking state
-			if sel = self.waitList.Dequeue(); sel != nil {
-				if threadPtr = atomic.SwapPointer(sel.ThreadPtr, nil); threadPtr != nil {
+			if selectorThread, dataOut = self.waitList.Dequeue(); selectorThread != nil {
+				if threadPtr = atomic.SwapPointer(selectorThread, nil); threadPtr != nil {
 					// implementaion of sending from closed channel to selector mechanism
 					if queueOpen {
 						// write to the selector
-						*sel.Data = data
+						*dataOut = data
 					} else {
 						// send nil from closed channel
-						*sel.Data = nil
+						*dataOut = nil
 					}
 					// notify selector
 					safe_ready(threadPtr)

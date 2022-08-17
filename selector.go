@@ -15,7 +15,7 @@ type Selection struct {
 // Selectable is an interface for getting selected among many others
 type Selectable interface {
 	IsClosed() bool
-	EnqueueSelector(*Selection)
+	EnqueueSelector(*unsafe.Pointer, *any)
 	ReadFromBackLog() (data any)
 	Signal() uint8
 }
@@ -50,10 +50,8 @@ filter:
 
 	g, numSignals, iter := GetG(), uint8(0), int8(0)
 
-	sel := &Selection{ThreadPtr: &g, Data: &data}
-
 	for idx := int8(0); idx <= numStreams; idx++ {
-		streams[idx].EnqueueSelector(sel)
+		streams[idx].EnqueueSelector(&g, &data)
 	}
 
 retry:
