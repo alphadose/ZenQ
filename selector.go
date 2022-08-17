@@ -1,33 +1,15 @@
 package zenq
 
 import (
-	"sync"
 	"sync/atomic"
 	"unsafe"
-)
-
-// global memory pool for holding selection objects
-var (
-	selectionPool = sync.Pool{New: func() any { return new(Selection) }}
-	selectionGet  = selectionPool.Get
-	selectionPut  = selectionPool.Put
 )
 
 // Selection is an object shared by a selector and its children ZenQs
 // This object is used for selection notification
 type Selection struct {
-	ThreadPtr      *unsafe.Pointer
-	Data           *any
-	referenceCount int32
-}
-
-// DecrementReferenceCount decrements the reference count by 1 and puts the object back into the pool if it reaches 0
-func (sel *Selection) DecrementReferenceCount() {
-	if atomic.AddInt32(&sel.referenceCount, -1) == 0 {
-		sel.ThreadPtr, sel.Data = nil, nil
-		// reuse this object in another selection event thereby saving memory
-		selectionPut(sel)
-	}
+	ThreadPtr *unsafe.Pointer
+	Data      *any
 }
 
 // Selectable is an interface for getting selected among many others
@@ -66,9 +48,9 @@ filter:
 		}
 	}
 
-	sel, g, numSignals, iter := selectionGet().(*Selection), GetG(), uint8(0), int8(0)
+	g, numSignals, iter := GetG(), uint8(0), int8(0)
 
-	sel.ThreadPtr, sel.Data, sel.referenceCount = &g, &data, int32(numStreams+1)
+	sel := &Selection{ThreadPtr: &g, Data: &data}
 
 	for idx := int8(0); idx <= numStreams; idx++ {
 		streams[idx].EnqueueSelector(sel)

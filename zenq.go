@@ -147,10 +147,8 @@ direct_send:
 			*sel.Data = value
 			// notify selector
 			safe_ready(selThread)
-			sel.DecrementReferenceCount()
 			return
 		}
-		sel.DecrementReferenceCount()
 		goto direct_send
 	}
 
@@ -342,10 +340,8 @@ func (self *ZenQ[T]) selectSender() {
 					// notify selector
 					safe_ready(threadPtr)
 					readState = false
-					sel.DecrementReferenceCount()
 					break selector_dequeue
 				} else {
-					sel.DecrementReferenceCount()
 					continue
 				}
 			} else {
