@@ -5,13 +5,6 @@ import (
 	"unsafe"
 )
 
-// Selection is an object shared by a selector and its children ZenQs
-// This object is used for selection notification
-type Selection struct {
-	ThreadPtr *unsafe.Pointer
-	Data      *any
-}
-
 // Selectable is an interface for getting selected among many others
 type Selectable interface {
 	IsClosed() bool
