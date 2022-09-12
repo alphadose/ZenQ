@@ -52,9 +52,9 @@ const (
 type (
 	// a single slot in the queue
 	slot[T any] struct {
-		atomic.Uint32
 		writeParker *ThreadParker[T]
-		item        T
+		atomic.Uint32
+		item T
 	}
 
 	// metadata of the queue
