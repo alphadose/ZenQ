@@ -1,15 +1,9 @@
-// A minimalist thread-safe queue implemented using a lock-free ringbuffer which is faster
-// and has lower memory allocations than golang's native channels
+// A minimalist thread-safe queue implemented using a lock-free ringbuffer which is faster than golang's native channels
 // Based on the LMAX disruptor pattern https://lmax-exchange.github.io/disruptor/disruptor.html
-
-// Known Limitations:-
-//
-// 1. Max queue_size = 2^16
-// 2. The queue_size is a power of 2, in case a different size is provided then queue_size is rounded up to the next greater power of 2 upto a max of 2^16
 
 // Suggestions:-
 //
-// 1. Use runtime.LockOSThread() on the goroutine calling ZenQ.Read() for lowest latency provided you have > 1 cpu cores
+// Use runtime.LockOSThread() on the goroutine calling ZenQ.Read() for lowest latency provided you have > 1 cpu cores
 
 package zenq
 
