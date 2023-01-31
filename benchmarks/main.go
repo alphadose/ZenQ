@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alphadose/zenq/v2"
+	"github.com/alphadose/zenq"
 )
 
 // Example item which we will be writing to and reading from the queue
@@ -30,7 +30,7 @@ func NewPayload() *Payload {
 }
 
 const (
-	bufferSize = 1 << 12
+	bufferSize = 1 << 14
 )
 
 var (
@@ -49,7 +49,7 @@ var (
 	ch chan Payload = make(chan Payload, bufferSize)
 
 	// ZenQ
-	zq *zenq.ZenQ[Payload] = zenq.New[Payload](bufferSize)
+	zq *zenq.ZenQ[Payload] = zenq.New[Payload]()
 )
 
 func validatePayload(param Payload) {
@@ -86,10 +86,8 @@ func zenqProducer() {
 }
 
 func zenqConsumer() {
-	var data Payload
 	for i := uint64(0); i < currSize; i++ {
-		data, _ = zq.Read()
-		validatePayload(data)
+		validatePayload(zq.Read())
 	}
 }
 
@@ -111,7 +109,6 @@ func cleanup() {
 	for len(ch) > 0 {
 		<-ch
 	}
-	zq.Reset()
 }
 
 func main() {

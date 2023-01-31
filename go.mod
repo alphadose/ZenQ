@@ -1,3 +1,3 @@
-module github.com/alphadose/zenq/v2
+module github.com/alphadose/zenq
 
 go 1.19
