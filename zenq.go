@@ -128,6 +128,21 @@ func New[T any](size uint32) *ZenQ[T] {
 	return zenq
 }
 
+// Size returns the number of items in the queue at any given time
+func (self *ZenQ[T]) Size() uint32 {
+	var (
+		readerIndex uint32 = self.readerIndex.Load() & uint32(self.indexMask)
+		writerIndex uint32 = self.writerIndex.Load() & uint32(self.indexMask)
+	)
+	if readerIndex > writerIndex {
+		return uint32(self.indexMask) + 2 - (readerIndex - writerIndex)
+	} else if writerIndex > readerIndex {
+		return writerIndex - readerIndex + 1
+	} else {
+		return 0
+	}
+}
+
 // Write writes a value to the queue
 // It returns whether the queue is currently open for writes or not
 // If not then it might be still open for reads, which can be checked by calling zenq.IsClosed()
