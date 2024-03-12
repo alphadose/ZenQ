@@ -41,9 +41,6 @@ func goparkunlock(lock *mutex, reason waitReason, traceEv byte, traceskip int)
 // defined in the asm files
 func GetG() unsafe.Pointer
 
-//go:linkname Fastrand runtime.fastrand
-func Fastrand() uint32
-
 //go:linkname Fastlog2 runtime.fastlog2
 func Fastlog2(x float64) float64
 
